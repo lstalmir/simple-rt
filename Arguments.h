@@ -20,6 +20,7 @@ namespace RT
 
         std::string InputFilename;
         std::string OutputFilename;
+        std::string Test;
 
     private:
         static const char s_pShortOptions[];

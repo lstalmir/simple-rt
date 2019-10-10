@@ -15,18 +15,32 @@ set (headers
     "Application.h"
     "ApplicationFactory.h"
     "ApplicationOMP.h"
+    "ApplicationTest.h"
     "Arguments.h"
+    "Fbx.h"
+    "Plane.h"
+    "Ray.h"
+    "Vector.h"
     )
 
 set (sources
     "Application.cpp"
     "ApplicationFactory.cpp"
     "ApplicationOMP.cpp"
+    "ApplicationTest.cpp"
     "Arguments.cpp"
     "Main.cpp"
+    "Ray.cpp"
     )
 
 add_executable (simple-rt ${sources} ${headers})
+
+# Compile with SSE
+if (MSVC)
+    target_compile_options (simple-rt PUBLIC /arch:SSE3)
+else ()
+    target_compile_options (simple-rt PUBLIC -msse3)
+endif ()
 
 target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/fbxsdk/include)

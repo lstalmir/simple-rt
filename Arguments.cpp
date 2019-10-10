@@ -4,6 +4,7 @@
 #if __has_include(<getopt.h>)
 #include <getopt.h>
 #else
+#include <string.h>
 
 #define no_argument 0
 #define required_argument 1
@@ -50,9 +51,10 @@ namespace
         Report a missing argument for the option and move to the next option.
 
     \***********************************************************************************/
-    inline int _internal_getopt_missing_argument( const option*, const char* shortopts )
+    inline int _internal_getopt_missing_argument( const char* opt, const char* shortopts )
     {
         // Missing argument for the option
+        fprintf( stderr, "option '%s' requires an argument\n", opt );
         if( shortopts && *shortopts == ':' ) return ':';
         else return '?';
     }
@@ -70,7 +72,7 @@ namespace
     {
         // Move to the next option
         optind++;
-        fprintf( stderr, "getopt: option %s not recognized\n", opt );
+        fprintf( stderr, "unrecognized option '%s'\n", opt );
         return '?';
     }
 
@@ -126,7 +128,7 @@ namespace
                     if( optind == argc && longopt->has_arg == required_argument )
                     {
                         // Commandline ends unexpectedly
-                        return _internal_getopt_missing_argument( longopt, shortopts );
+                        return _internal_getopt_missing_argument( argv[optind], shortopts );
                     }
 
                     if( optind < argc )
@@ -153,8 +155,14 @@ namespace
                 // Valid option found, advance the pointer
                 optind++;
 
-                if( shortopt[1] == ':' && optind < argc )
+                if( shortopt[1] == ':' )
                 {
+                    if( optind == argc )
+                    {
+                        // Commandline ends unexpectedly
+                        return _internal_getopt_missing_argument( argv[optind], shortopts );
+                    }
+
                     // Store pointer to the option argument in the optarg and advance the pointer
                     optarg = argv[optind++];
                 }
@@ -170,10 +178,11 @@ namespace
 
 #endif
 
-const char RT::CommandLineArguments::s_pShortOptions[] = "i:o:";
+const char RT::CommandLineArguments::s_pShortOptions[] = "i:o:t:";
 const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "input", required_argument, 0, 'i' },
     { "output", required_argument, 0, 'o' },
+    { "test", required_argument, 0, 't' },
     { 0, 0, 0, 0 } };
 
 /***************************************************************************************\
@@ -188,6 +197,7 @@ Description:
 RT::CommandLineArguments::CommandLineArguments()
     : InputFilename()
     , OutputFilename()
+    , Test()
 {
 }
 
@@ -265,6 +275,13 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char* const*
             case 'o':
             {
                 cmdargs.OutputFilename = optarg;
+                break;
+            }
+
+            // Test
+            case 't':
+            {
+                cmdargs.Test = optarg;
                 break;
             }
         }

@@ -13,7 +13,7 @@ Description:
     Entry-point to the application.
 
 \***************************************************************************************/
-int main( int argc, char* const argv[] )
+int main( int argc, char* argv[] )
 {
     // Command-line arguments for the RT application
     RT::CommandLineArguments cmdargs = RT::CommandLineArguments::Parse( argc, argv );

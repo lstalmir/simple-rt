@@ -24,6 +24,7 @@ set (headers
     "Plane.h"
     "Ray.h"
     "Vector.h"
+    "tests/VectorTests.cpp"
     )
 
 set (sources

@@ -13,7 +13,7 @@ Description:
 \***************************************************************************************/
 std::unique_ptr<RT::Application> RT::ApplicationFactory::CreateApplication( const RT::CommandLineArguments& cmdargs )
 {
-    if( !cmdargs.Test.empty() )
+    if( cmdargs.Test )
     {
         // Test application
         return std::make_unique<ApplicationTest>( cmdargs );

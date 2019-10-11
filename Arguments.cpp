@@ -178,11 +178,11 @@ namespace
 
 #endif
 
-const char RT::CommandLineArguments::s_pShortOptions[] = "i:o:t:";
+const char RT::CommandLineArguments::s_pShortOptions[] = "i:o:t";
 const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "input", required_argument, 0, 'i' },
     { "output", required_argument, 0, 'o' },
-    { "test", required_argument, 0, 't' },
+    { "test", no_argument, 0, 't' },
     { 0, 0, 0, 0 } };
 
 /***************************************************************************************\
@@ -195,9 +195,11 @@ Description:
 
 \***************************************************************************************/
 RT::CommandLineArguments::CommandLineArguments()
-    : InputFilename()
+    : argc( 0 )
+    , argv( nullptr )
+    , InputFilename()
     , OutputFilename()
-    , Test()
+    , Test( false )
 {
 }
 
@@ -251,10 +253,13 @@ Description:
     Parses command-line arguments into CommandLineArguments structure.
 
 \***************************************************************************************/
-RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char* const* argv )
+RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv )
 {
     // Reset structure values
     RT::CommandLineArguments cmdargs;
+
+    cmdargs.argc = argc;
+    cmdargs.argv = argv;
 
     // Reset internal getopt counter to start scanning from the beginning of argv
     optind = 1;
@@ -281,13 +286,41 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char* const*
             // Test
             case 't':
             {
-                cmdargs.Test = optarg;
+                cmdargs.Test = true;
                 break;
             }
         }
     }
 
     return cmdargs;
+}
+
+/***************************************************************************************\
+
+Function:
+    CommandLineArguments::FindOption
+
+Description:
+    Find index of the option in the command-line array.
+
+\***************************************************************************************/
+int RT::CommandLineArguments::FindOption( RT::CommandLineOption opt, int argc, char** argv )
+{
+    // Reset internal getopt counter to start scanning from the beginning of argv
+    optind = 1;
+
+    int i = 0;
+    while( (i = getopt_long_only( argc, argv, s_pShortOptions, s_pLongOptions, nullptr )) != -1 )
+    {
+        if( (i == 'i' && opt == CommandLineOption::eInput) ||
+            (i == 'o' && opt == CommandLineOption::eOutput) ||
+            (i == 't' && opt == CommandLineOption::eTest) )
+        {
+            return optind;
+        }
+    }
+
+    return -1;
 }
 
 /***************************************************************************************\
@@ -301,8 +334,8 @@ Description:
 \***************************************************************************************/
 bool RT::CommandLineArguments::Validate() const
 {
-    return !InputFilename.empty()
-        && !OutputFilename.empty();
+    return (Test)
+        || (!InputFilename.empty() && !OutputFilename.empty());
 }
 
 /***************************************************************************************\
@@ -316,13 +349,15 @@ Description:
 \***************************************************************************************/
 void RT::CommandLineArguments::ReportMissingOptions( std::ostream& out ) const
 {
-    if( InputFilename.empty() )
+    if( !Test )
     {
-        out << "ERROR: Missing input filename\n";
-    }
-
-    if( OutputFilename.empty() )
-    {
-        out << "ERROR: Missing output filename\n";
+        if( InputFilename.empty() )
+        {
+            out << "ERROR: Missing input filename\n";
+        }
+        if( OutputFilename.empty() )
+        {
+            out << "ERROR: Missing output filename\n";
+        }
     }
 }

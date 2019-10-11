@@ -74,4 +74,9 @@ namespace RT
         xmm0 = _mm_sqrt_ps( xmm0 );
         return _mm_div_ps( a, xmm0 );
     }
+
+    inline __m128 normalize1( __m128 )
+    {
+        return _mm_set_ps( 0, 0, 0, 1 );
+    }
 }

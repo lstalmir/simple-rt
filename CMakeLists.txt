@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 2.8)
 
 project (simple-rt)
 
+set (gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+add_subdirectory (gtest)
+
 # Build with C++17
 set (CMAKE_CXX_STANDARD 17)
 
@@ -37,10 +40,17 @@ add_executable (simple-rt ${sources} ${headers})
 
 # Compile with SSE
 if (MSVC)
-    target_compile_options (simple-rt PUBLIC /arch:SSE3)
+    #target_compile_options (simple-rt PUBLIC /arch:SSE3)
 else ()
     target_compile_options (simple-rt PUBLIC -msse3)
 endif ()
+
+# Link gtest
+target_link_libraries (simple-rt gtest_main)
+
+target_include_directories (simple-rt
+    PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googletest/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googlemock/include)
 
 target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/fbxsdk/include)

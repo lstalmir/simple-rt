@@ -19,5 +19,8 @@ namespace RT
         int TEST_Vector_Normalize3();
         int TEST_Vector_Normalize2();
         int TEST_Ray_Intersect_Plane();
+
+        void AssertEq( float expected, float actual, float tolerance, std::string message = "" );
+        void AssertEq( int expected, int actual, std::string message = "" );
     };
 }

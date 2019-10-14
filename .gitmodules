@@ -1,3 +1,9 @@
 [submodule "gtest"]
 	path = gtest
 	url = https://github.com/google/googletest
+[submodule "opencl-headers"]
+	path = opencl-headers
+	url = https://github.com/KhronosGroup/OpenCL-Headers
+[submodule "opencl-clhpp"]
+	path = opencl-clhpp
+	url = https://github.com/KhronosGroup/OpenCL-CLHPP

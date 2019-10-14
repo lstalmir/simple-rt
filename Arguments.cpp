@@ -54,7 +54,7 @@ namespace
     inline int _internal_getopt_missing_argument( const char* opt, const char* shortopts )
     {
         // Missing argument for the option
-        fprintf( stderr, "option '%s' requires an argument\n", opt );
+        fprintf( stderr, "ERRO: Option '%s' requires an argument\n", opt );
         if( shortopts && *shortopts == ':' ) return ':';
         else return '?';
     }
@@ -72,7 +72,7 @@ namespace
     {
         // Move to the next option
         optind++;
-        fprintf( stderr, "unrecognized option '%s'\n", opt );
+        fprintf( stderr, "ERROR: Unrecognized option '%s'\n", opt );
         return '?';
     }
 
@@ -178,11 +178,16 @@ namespace
 
 #endif
 
+#define WARN_REDEF( TEST, NAME, ERR ) \
+    if( !(TEST) ) ERR << "WARNING: " NAME " redefinition\n"
+
 const char RT::CommandLineArguments::s_pShortOptions[] = "i:o:t";
 const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "input", required_argument, 0, 'i' },
     { "output", required_argument, 0, 'o' },
     { "test", no_argument, 0, 't' },
+    { "opencl", no_argument, 0, 'ocl' },
+    { "openmp", no_argument, 0, 'omp' },
     { 0, 0, 0, 0 } };
 
 /***************************************************************************************\
@@ -197,9 +202,10 @@ Description:
 RT::CommandLineArguments::CommandLineArguments()
     : argc( 0 )
     , argv( nullptr )
-    , InputFilename()
-    , OutputFilename()
-    , Test( false )
+    , appInputFilename()
+    , appOutputFilename()
+    , appMode( ApplicationMode::eUndefined )
+    , oclDeviceType( OpenCLDeviceType::eUndefined )
 {
 }
 
@@ -220,7 +226,12 @@ void RT::CommandLineArguments::Help( std::ostream& out )
 
     while( pOption->name != nullptr )
     {
-        out << "-" << pOption->name << ",-" << static_cast<char>( pOption->val );
+        out << "-" << pOption->name;
+
+        if( pOption->val < 256 )
+        {
+            out << ",-" << static_cast<char>(pOption->val);
+        }
 
         switch( pOption->has_arg )
         {
@@ -253,7 +264,7 @@ Description:
     Parses command-line arguments into CommandLineArguments structure.
 
 \***************************************************************************************/
-RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv )
+RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv, std::ostream& err )
 {
     // Reset structure values
     RT::CommandLineArguments cmdargs;
@@ -272,21 +283,40 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv 
             // Input filename
             case 'i':
             {
-                cmdargs.InputFilename = optarg;
+                WARN_REDEF( cmdargs.appInputFilename.empty(), "Input filename", err );
+                cmdargs.appInputFilename = optarg;
                 break;
             }
 
             // Output filename
             case 'o':
             {
-                cmdargs.OutputFilename = optarg;
+                WARN_REDEF( cmdargs.appOutputFilename.empty(), "Output filename", err );
+                cmdargs.appOutputFilename = optarg;
                 break;
             }
 
-            // Test
+            // Test test
             case 't':
             {
-                cmdargs.Test = true;
+                WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
+                cmdargs.appMode = ApplicationMode::eTest;
+                break;
+            }
+
+            // OpenCL test
+            case 'ocl':
+            {
+                WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
+                cmdargs.appMode = ApplicationMode::eOpenCL;
+                break;
+            }
+
+            // OpenMP test
+            case 'omp':
+            {
+                WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
+                cmdargs.appMode = ApplicationMode::eOpenMP;
                 break;
             }
         }
@@ -298,66 +328,36 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv 
 /***************************************************************************************\
 
 Function:
-    CommandLineArguments::FindOption
-
-Description:
-    Find index of the option in the command-line array.
-
-\***************************************************************************************/
-int RT::CommandLineArguments::FindOption( RT::CommandLineOption opt, int argc, char** argv )
-{
-    // Reset internal getopt counter to start scanning from the beginning of argv
-    optind = 1;
-
-    int i = 0;
-    while( (i = getopt_long_only( argc, argv, s_pShortOptions, s_pLongOptions, nullptr )) != -1 )
-    {
-        if( (i == 'i' && opt == CommandLineOption::eInput) ||
-            (i == 'o' && opt == CommandLineOption::eOutput) ||
-            (i == 't' && opt == CommandLineOption::eTest) )
-        {
-            return optind;
-        }
-    }
-
-    return -1;
-}
-
-/***************************************************************************************\
-
-Function:
     CommandLineArguments::Validate
 
 Description:
-    Validates values currently stored in the structure.
+    Validates values currently stored in the structure. Reports command-line options
+    which were required, but not provided.
 
 \***************************************************************************************/
-bool RT::CommandLineArguments::Validate() const
+bool RT::CommandLineArguments::Validate( std::ostream& err ) const
 {
-    return (Test)
-        || (!InputFilename.empty() && !OutputFilename.empty());
-}
+    bool valid = true;
 
-/***************************************************************************************\
-
-Function:
-    CommandLineArguments::ReportMissingOptions
-
-Description:
-    Report command-line options which were required, but not provided.
-
-\***************************************************************************************/
-void RT::CommandLineArguments::ReportMissingOptions( std::ostream& out ) const
-{
-    if( !Test )
+    if( appMode == ApplicationMode::eUndefined )
     {
-        if( InputFilename.empty() )
+        err << "ERROR: Application mode not defined\n";
+        valid = false;
+    }
+
+    if( appMode != ApplicationMode::eTest )
+    {
+        if( appInputFilename.empty() )
         {
-            out << "ERROR: Missing input filename\n";
+            err << "ERROR: Input filename not defined\n";
+            valid = false;
         }
-        if( OutputFilename.empty() )
+        if( appOutputFilename.empty() )
         {
-            out << "ERROR: Missing output filename\n";
+            err << "ERROR: Output filename not defined\n";
+            valid = false;
         }
     }
+
+    return valid;
 }

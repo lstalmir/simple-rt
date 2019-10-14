@@ -1,4 +1,5 @@
 #include "ApplicationFactory.h"
+#include "ApplicationOCL.h"
 #include "ApplicationOMP.h"
 #include "ApplicationTest.h"
 
@@ -13,12 +14,20 @@ Description:
 \***************************************************************************************/
 std::unique_ptr<RT::Application> RT::ApplicationFactory::CreateApplication( const RT::CommandLineArguments& cmdargs )
 {
-    if( cmdargs.Test )
+    switch( cmdargs.appMode )
     {
-        // Test application
+    case ApplicationMode::eTest:
+    {
         return std::make_unique<ApplicationTest>( cmdargs );
     }
-
-    // TODO: Add CUDA application
-    return std::make_unique<ApplicationOMP>( cmdargs );
+    case ApplicationMode::eOpenMP:
+    {
+        return std::make_unique<ApplicationOMP>( cmdargs );
+    }
+    case ApplicationMode::eOpenCL:
+    {
+        return std::make_unique<ApplicationOCL>( cmdargs );
+    }
+    }
+    return nullptr;
 }

@@ -6,11 +6,20 @@ struct option;
 
 namespace RT
 {
-    enum class CommandLineOption
+    enum class ApplicationMode
     {
-        eInput,
-        eOutput,
-        eTest
+        eUndefined,
+        eTest,
+        eOpenMP,
+        eOpenCL
+    };
+
+    enum class OpenCLDeviceType
+    {
+        eUndefined,
+        eCPU,
+        eGPU,
+        eAccelerator
     };
 
     class CommandLineArguments
@@ -20,18 +29,16 @@ namespace RT
 
         static void Help( std::ostream& out );
 
-        static CommandLineArguments Parse( int argc, char** argv );
+        static CommandLineArguments Parse( int argc, char** argv, std::ostream& err );
 
-        static int FindOption( CommandLineOption opt, int argc, char** argv );
+        bool Validate( std::ostream& err ) const;
 
-        bool Validate() const;
-        void ReportMissingOptions( std::ostream& out ) const;
-
-        int argc;
-        char** argv;
-        std::string InputFilename;
-        std::string OutputFilename;
-        bool Test;
+        int                 argc;
+        char**              argv;
+        std::string         appInputFilename;
+        std::string         appOutputFilename;
+        ApplicationMode     appMode;
+        OpenCLDeviceType    oclDeviceType;
 
     private:
         static const char s_pShortOptions[];

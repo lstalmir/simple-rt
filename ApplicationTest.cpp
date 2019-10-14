@@ -1,9 +1,5 @@
 #include "ApplicationTest.h"
-#include "Plane.h"
-#include "Ray.h"
-#include "Vector.h"
 #include <gtest/gtest.h>
-#include <iostream>
 
 /***************************************************************************************\
 

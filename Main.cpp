@@ -16,12 +16,12 @@ Description:
 int main( int argc, char* argv[] )
 {
     // Command-line arguments for the RT application
-    RT::CommandLineArguments cmdargs = RT::CommandLineArguments::Parse( argc, argv );
+    RT::CommandLineArguments cmdargs = RT::CommandLineArguments::Parse( argc, argv, std::cerr );
 
-    if( !cmdargs.Validate() )
+    // Validate options
+    if( !cmdargs.Validate( std::cerr ) )
     {
-        cmdargs.ReportMissingOptions( std::cout );
-        cmdargs.Help( std::cout );
+        RT::CommandLineArguments::Help( std::cout );
         return EINVAL;
     }
 

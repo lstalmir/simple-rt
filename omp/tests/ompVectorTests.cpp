@@ -1,6 +1,32 @@
 #include <gtest/gtest.h>
-#include "../Vector.h"
-#include "../SSE.h"
+#include "../ompIntrin.h"
+#include "../ompVector.h"
+
+/***************************************************************************************\
+
+Test:
+    Dot
+
+Description:
+    Get dot product of 2 non-zero vectors.
+
+\***************************************************************************************/
+TEST( ompVectorTests, Dot )
+{
+    RT::vec4 vec_0( 10, 1, 15, -100 );
+    RT::vec4 vec_1( -12, 0, 20, 3 );
+
+    __m128 xmm0, xmm1;
+    xmm0 = _mm_load_ps( &vec_0.data );
+    xmm1 = _mm_load_ps( &vec_1.data );
+    xmm0 = RT::Dot( xmm0, xmm1 );
+    _mm_store_ps( &vec_0.data, xmm0 );
+
+    EXPECT_NEAR( vec_0.x, -120.0f, 0.01f );
+    EXPECT_NEAR( vec_0.y, -120.0f, 0.01f );
+    EXPECT_NEAR( vec_0.z, -120.0f, 0.01f );
+    EXPECT_NEAR( vec_0.w, -120.0f, 0.01f );
+}
 
 /***************************************************************************************\
 
@@ -17,7 +43,7 @@ TEST( ompVectorTests, Length4 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::length4( xmm0 );
+    xmm0 = RT::Length4( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 20.0f, 0.01f );
@@ -41,7 +67,7 @@ TEST( ompVectorTests, Length3 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::length3( xmm0 );
+    xmm0 = RT::Length3( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 17.32f, 0.01f );
@@ -65,7 +91,7 @@ TEST( ompVectorTests, Length2 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::length2( xmm0 );
+    xmm0 = RT::Length2( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 14.14f, 0.01f );
@@ -89,7 +115,7 @@ TEST( ompVectorTests, Length1 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::length1( xmm0 );
+    xmm0 = RT::Length1( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 10.0f, 0.01f );
@@ -114,7 +140,7 @@ TEST( ompVectorTests, Normalize4 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::normalize4( xmm0 );
+    xmm0 = RT::Normalize4( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 0.5f, 0.01f );
@@ -139,7 +165,7 @@ TEST( ompVectorTests, Normalize3 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::normalize3( xmm0 );
+    xmm0 = RT::Normalize3( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 0.57f, 0.01f );
@@ -164,7 +190,7 @@ TEST( ompVectorTests, Normalize2 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::normalize2( xmm0 );
+    xmm0 = RT::Normalize2( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 0.71f, 0.01f );
@@ -189,7 +215,7 @@ TEST( ompVectorTests, Normalize1 )
 
     __m128 xmm0;
     xmm0 = _mm_load_ps( &vec4.data );
-    xmm0 = RT::xmm::normalize1( xmm0 );
+    xmm0 = RT::Normalize1( xmm0 );
     _mm_store_ps( &vec4.data, xmm0 );
 
     EXPECT_NEAR( vec4.x, 1.0f, 0.01f );

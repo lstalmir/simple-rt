@@ -1,9 +1,9 @@
 #pragma once
 #include <immintrin.h>
 
-namespace RT::xmm
+namespace RT
 {
-    inline __m128 dot( __m128 a, __m128 b )
+    inline __m128 Dot( __m128 a, __m128 b )
     {
         __m128 xmm0, xmm1, xmm2;
         xmm0 = _mm_mul_ps( a, b );
@@ -14,22 +14,22 @@ namespace RT::xmm
         return _mm_shuffle_ps( xmm2, xmm2, _MM_SHUFFLE( 0, 0, 0, 0 ) );
     }
 
-    inline __m128 length4( __m128 a )
+    inline __m128 Length4( __m128 a )
     {
-        return _mm_sqrt_ps( dot( a, a ) );
+        return _mm_sqrt_ps( Dot( a, a ) );
     }
 
-    inline __m128 length3( __m128 a )
+    inline __m128 Length3( __m128 a )
     {
         __m128 xmm0;
         __m128i xmm0i;
         xmm0i = _mm_set_epi32( 0, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF );
         xmm0 = _mm_castsi128_ps( xmm0i );
         a = _mm_and_ps( a, xmm0 );
-        return _mm_sqrt_ps( dot( a, a ) );
+        return _mm_sqrt_ps( Dot( a, a ) );
     }
 
-    inline __m128 length2( __m128 a )
+    inline __m128 Length2( __m128 a )
     {
         __m128 xmm0;
         __m128i xmm0i;
@@ -43,28 +43,28 @@ namespace RT::xmm
         return _mm_sqrt_ps( xmm0 );
     }
 
-    inline __m128 length1( __m128 a )
+    inline __m128 Length1( __m128 a )
     {
         return _mm_shuffle_ps( a, a, _MM_SHUFFLE( 0, 0, 0, 0 ) );
     }
 
-    inline __m128 normalize4( __m128 a )
+    inline __m128 Normalize4( __m128 a )
     {
-        return _mm_div_ps( a, length4( a ) );
+        return _mm_div_ps( a, Length4( a ) );
     }
 
-    inline __m128 normalize3( __m128 a )
+    inline __m128 Normalize3( __m128 a )
     {
         __m128 xmm0;
         __m128i xmm0i;
         xmm0i = _mm_set_epi32( 0, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF );
         xmm0 = _mm_castsi128_ps( xmm0i );
         a = _mm_and_ps( a, xmm0 );
-        xmm0 = _mm_sqrt_ps( dot( a, a ) );
+        xmm0 = _mm_sqrt_ps( Dot( a, a ) );
         return _mm_div_ps( a, xmm0 );
     }
 
-    inline __m128 normalize2( __m128 a )
+    inline __m128 Normalize2( __m128 a )
     {
         __m128 xmm0;
         __m128i xmm0i;
@@ -79,12 +79,12 @@ namespace RT::xmm
         return _mm_div_ps( a, xmm0 );
     }
 
-    inline __m128 normalize1( __m128 )
+    inline __m128 Normalize1( __m128 )
     {
         return _mm_set_ps( 0, 0, 0, 1 );
     }
 
-    inline __m128 abs( __m128 a )
+    inline __m128 Abs( __m128 a )
     {
         __m128i xmm0i, xmm1i;
         xmm0i = _mm_castps_si128( a );
@@ -93,7 +93,7 @@ namespace RT::xmm
         return _mm_castsi128_ps( xmm0i );
     }
 
-    inline __m128 cross3( __m128 a, __m128 b )
+    inline __m128 Cross( __m128 a, __m128 b )
     {
         __m128 xmm0, xmm1, xmm2, xmm3;
         xmm0 = _mm_shuffle_ps( a, a, _MM_SHUFFLE( 3, 0, 2, 1 ) );

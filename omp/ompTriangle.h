@@ -1,6 +1,5 @@
 #pragma once
-#include "SSE.h"
-#include "Vector.h"
+#include "ompVector.h"
 
 namespace RT
 {

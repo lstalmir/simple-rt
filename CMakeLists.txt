@@ -43,16 +43,17 @@ set (ocl
     )
 
 set (omp
-    "omp/Plane.cpp"
-    "omp/Plane.h"
-    "omp/Ray.h"
-    "omp/SSE.h"
-    "omp/Vector.h"
+    "omp/ompIntersect.h"
+    "omp/ompIntrin.h"
+    "omp/ompPlane.h"
+    "omp/ompRay.h"
+    "omp/ompVector.h"
     )
 
 set (omptests
+    "omp/tests/ompIntersectTests.cpp"
+    "omp/tests/ompReflectTests.cpp"
     "omp/tests/ompVectorTests.cpp"
-    "omp/tests/ompRayTests.cpp"
     )
 
 add_executable (simple-rt ${base} ${ocl} ${omp} ${omptests})

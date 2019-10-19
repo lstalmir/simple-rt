@@ -5,6 +5,15 @@ project (simple-rt)
 set (gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory (gtest)
 
+add_subdirectory (zlib)
+
+set (PNG_BUILD_ZLIB ON)
+set (PNG_LINK_ZLIB_STATIC OFF)
+set (SKIP_INSTALL_EXPORT ON)
+set (ZLIB_INCLUDE_DIR ${CMAKE_BINARY_DIR}/zlib ${CMAKE_SOURCE_DIR}/zlib)
+set (ZLIB_LIBRARY zlib)
+add_subdirectory (libpng)
+
 find_package (OpenCL REQUIRED)
 find_package (OpenMP REQUIRED)
 
@@ -43,14 +52,19 @@ set (ocl
     )
 
 set (omp
+    "omp/ompCamera.h"
     "omp/ompIntersect.h"
     "omp/ompIntrin.h"
     "omp/ompPlane.h"
     "omp/ompRay.h"
+    "omp/ompReflect.h"
+    "omp/ompTriangle.h"
     "omp/ompVector.h"
     )
 
 set (omptests
+    "omp/tests/ompCameraTests.cpp"
+    "omp/tests/ompDrawTests.cpp"
     "omp/tests/ompIntersectTests.cpp"
     "omp/tests/ompReflectTests.cpp"
     "omp/tests/ompVectorTests.cpp"
@@ -114,4 +128,54 @@ elseif (WIN32)
                 ${CMAKE_SOURCE_DIR}/fbxsdk/lib/vs2017/${architecture}/release/libfbxsdk.dll
                 ${CMAKE_BINARY_DIR}/libfbxsdk.dll)
 
+endif ()
+
+# zlib
+target_include_directories (simple-rt
+    PRIVATE ${CMAKE_SOURCE_DIR}/zlib
+    PRIVATE ${CMAKE_BINARY_DIR}/zlib)
+
+target_link_libraries (simple-rt zlib)
+
+if (UNIX)
+
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_BINARY_DIR}/zlib/zlibd.so
+                ${CMAKE_BINARY_DIR}/zlibd.so)
+        
+elseif (WIN32)
+
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_BINARY_DIR}/zlib/zlibd.dll
+                ${CMAKE_BINARY_DIR}/zlibd.dll)
+        
+endif ()
+
+# libpng
+target_include_directories (simple-rt
+    PRIVATE ${CMAKE_SOURCE_DIR}/libpng
+    PRIVATE ${CMAKE_BINARY_DIR}/libpng)
+
+target_link_libraries (simple-rt png)
+
+if (UNIX)
+
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_BINARY_DIR}/libpng/libpng16d.so
+                ${CMAKE_BINARY_DIR}/libpng16d.so)
+        
+elseif (WIN32)
+
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_BINARY_DIR}/libpng/libpng16d.dll
+                ${CMAKE_BINARY_DIR}/libpng16d.dll)
+        
 endif ()

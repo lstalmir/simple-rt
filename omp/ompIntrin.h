@@ -3,6 +3,11 @@
 
 namespace RT
 {
+    inline float Radians( float angle )
+    {
+        return angle * (3.1415926536f / 180.0f);
+    }
+
     inline __m128 Dot( __m128 a, __m128 b )
     {
         __m128 xmm0, xmm1, xmm2;

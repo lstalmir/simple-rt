@@ -50,17 +50,17 @@ int RT::ApplicationOMP::Run()
     const int Y = m_CommandLineArguments.appHeight;
 
     const auto primaryRays = m_Scene.Cameras[0].SpawnPrimaryRays( X, Y );
-    const size_t primaryRayCount = primaryRays.size();
+    const int primaryRayCount = primaryRays.size();
 
-    std::vector<RT::vec4> intersections( X * Y );
+    std::vector<RT::vec4> intersections( primaryRays.size() );
 
     struct char3 { png_byte r, g, b; };
-    std::vector<char3> pDstImageData( X * Y );
+    std::vector<char3> pDstImageData( primaryRays.size() );
 
     BenchmarkBegin();
 
-#   pragma omp parallel
-    for( size_t i = 0; i < primaryRayCount; ++i )
+#   pragma omp parallel for
+    for( int i = 0; i < primaryRayCount; ++i )
     {
         intersections[i] = vec4( std::numeric_limits<RT::float_t>::infinity() );
 

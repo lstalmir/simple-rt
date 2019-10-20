@@ -14,6 +14,9 @@ set (ZLIB_INCLUDE_DIR ${CMAKE_BINARY_DIR}/zlib ${CMAKE_SOURCE_DIR}/zlib)
 set (ZLIB_LIBRARY zlib)
 add_subdirectory (libpng)
 
+set (TBB_DIR ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/cmake)
+
+find_package (TBB REQUIRED)
 find_package (OpenCL REQUIRED)
 find_package (OpenMP REQUIRED)
 
@@ -23,9 +26,11 @@ set (CMAKE_CXX_STANDARD 17)
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     set (architecture x64)
     set (bits 64)
+    set (tbb_arch intel64)
 else ()
     set (architecture x86)
     set (bits 32)
+    set (tbb_arch ia32)
 endif ()
 
 set (base
@@ -89,6 +94,35 @@ target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googletest/include
     PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googlemock/include)
 
+# TBB
+target_include_directories (simple-rt
+    PRIVATE ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/pstl2019_20191006oss/include)
+
+if (UNIX)
+
+    target_link_directories (simple-rt
+        PRIVATE ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8)
+        
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb.so
+                ${CMAKE_BINARY_DIR}/libtbb.so)
+
+elseif (WIN32)
+
+    target_link_directories (simple-rt
+        PRIVATE ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/vc14)
+        
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb.dll
+                ${CMAKE_BINARY_DIR}/tbb.dll)
+
+endif ()
+
 # OpenCL
 target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/opencl-headers
@@ -140,24 +174,12 @@ target_include_directories (simple-rt
 
 target_link_libraries (simple-rt zlib)
 
-if (UNIX)
-
-    add_custom_command (
-        TARGET simple-rt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_BINARY_DIR}/zlib/zlibd.so
-                ${CMAKE_BINARY_DIR}/zlibd.so)
+add_custom_command (
+    TARGET simple-rt POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            $<TARGET_FILE:zlib>
+            ${CMAKE_BINARY_DIR}/$<TARGET_FILE_NAME:zlib>)
         
-elseif (WIN32)
-
-    add_custom_command (
-        TARGET simple-rt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_BINARY_DIR}/zlib/zlibd.dll
-                ${CMAKE_BINARY_DIR}/zlibd.dll)
-        
-endif ()
-
 # libpng
 target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/libpng
@@ -165,20 +187,9 @@ target_include_directories (simple-rt
 
 target_link_libraries (simple-rt png)
 
-if (UNIX)
-
-    add_custom_command (
-        TARGET simple-rt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_BINARY_DIR}/libpng/libpng16d.so
-                ${CMAKE_BINARY_DIR}/libpng16d.so)
+add_custom_command (
+    TARGET simple-rt POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            $<TARGET_FILE:png>
+            ${CMAKE_BINARY_DIR}/$<TARGET_FILE_NAME:png>)
         
-elseif (WIN32)
-
-    add_custom_command (
-        TARGET simple-rt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_BINARY_DIR}/libpng/libpng16d.dll
-                ${CMAKE_BINARY_DIR}/libpng16d.dll)
-        
-endif ()

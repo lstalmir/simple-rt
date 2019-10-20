@@ -1,6 +1,7 @@
 #pragma once
 #include "../Scene.h"
 #include "ompCamera.h"
+#include "ompLight.h"
 #include "ompObject.h"
 #include <algorithm>
 #include <fbxsdk.h>
@@ -11,6 +12,7 @@ namespace RT::OMP
     {
         using CameraType = RT::OMP::Camera;
         using ObjectType = RT::OMP::Object;
+        using LightType = RT::OMP::Light;
     };
 
     template<typename SceneTypes = RT::OMP::SceneTypes>
@@ -47,6 +49,14 @@ namespace RT::OMP
             ompCamera.AspectRatio = aspect;
 
             return ompCamera;
+        }
+
+        inline static typename SceneTypes::LightType CreateLightFromFbx( fbxsdk::FbxNode* pLightNode )
+        {
+            typename SceneTypes::LightType ompLight;
+            ompLight.Position = RT::vec4( pLightNode->LclTranslation.Get() );
+
+            return ompLight;
         }
 
         inline static typename SceneTypes::ObjectType CreateObjectFromFbx( fbxsdk::FbxNode* pObjectNode )
@@ -87,6 +97,10 @@ namespace RT::OMP
 
                 ompObject.Triangles.push_back( tri );
             }
+
+            ompObject.Color.x = static_cast<RT::float_t>(rand() % 256);
+            ompObject.Color.y = static_cast<RT::float_t>(rand() % 256);
+            ompObject.Color.z = static_cast<RT::float_t>(rand() % 256);
 
             return ompObject;
         }

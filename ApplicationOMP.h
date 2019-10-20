@@ -16,13 +16,10 @@ namespace RT
     protected:
         Scene<RT::OMP::SceneTraits> m_Scene;
 
-        struct RayTriangleIntersectionTask
+        struct RayTriangleIntersection
         {
-            int i;
-            const RT::OMP::Ray* pRay;
-            const RT::OMP::Triangle* pTriangle;
+            RT::OMP::Triangle* pTriangle;
+            RT::vec4 ColorDistance;
         };
-
-        tbb::concurrent_queue<RayTriangleIntersectionTask> m_Tasks;
     };
 }

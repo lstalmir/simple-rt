@@ -50,6 +50,7 @@ set (base
     "File.h"
     "Intrin.h"
     "Main.cpp"
+    "Scene.h"
     "Vec.h"
     )
     
@@ -62,6 +63,7 @@ set (ocl
 set (omp
     "omp/ompBox.h"
     "omp/ompCamera.h"
+    "omp/ompLight.h"
     "omp/ompObject.h"
     "omp/ompPlane.h"
     "omp/ompRay.h"
@@ -109,6 +111,12 @@ if (UNIX)
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb.so
                 ${CMAKE_BINARY_DIR}/libtbb.so)
+                
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb_debug.so
+                ${CMAKE_BINARY_DIR}/libtbb_debug.so)
 
 elseif (WIN32)
 
@@ -120,6 +128,12 @@ elseif (WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb.dll
                 ${CMAKE_BINARY_DIR}/tbb.dll)
+                
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb_debug.dll
+                ${CMAKE_BINARY_DIR}/tbb_debug.dll)
 
 endif ()
 

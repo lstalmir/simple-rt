@@ -19,6 +19,7 @@ namespace RT
         using TT = typename Scene<SceneTraits>;
     public:
         std::vector<typename TT::CameraType> Cameras;
+        std::vector<typename TT::LightType> Lights;
         std::vector<typename TT::ObjectType> Objects;
     };
 
@@ -69,6 +70,16 @@ namespace RT
                 scene.Cameras.push_back( Scene::CreateCameraFromFbx( pCamera ) );
             }
 
+            // Get all lights
+            std::vector<fbxsdk::FbxNode*> pLightNodes;
+            FindLights( pRootNode, pLightNodes );
+
+            for( fbxsdk::FbxNode* pLight : pLightNodes )
+            {
+                scene.Lights.push_back( Scene::CreateLightFromFbx( pLight ) );
+            }
+
+            // Get all objects
             std::vector<fbxsdk::FbxNode*> pObjectNodes;
             FindObjects( pRootNode, pObjectNodes );
 
@@ -105,6 +116,31 @@ namespace RT
                 {
                     // Find cameras recursively
                     FindCameras( pNode->GetChild( i ), pCameraNodes );
+                }
+            }
+        }
+
+        inline void FindLights( fbxsdk::FbxNode* pNode, std::vector<fbxsdk::FbxNode*>& pLightNodes )
+        {
+            if( pNode )
+            {
+                fbxsdk::FbxNodeAttribute* pNodeAttribute = pNode->GetNodeAttribute();
+
+                if( pNodeAttribute )
+                {
+                    // Light is special kind of node
+                    if( pNodeAttribute->GetAttributeType() == fbxsdk::FbxNodeAttribute::eLight )
+                    {
+                        pLightNodes.push_back( pNode );
+                    }
+                }
+
+                const int childCount = pNode->GetChildCount();
+
+                for( int i = 0; i < childCount; ++i )
+                {
+                    // Find lights recursively
+                    FindLights( pNode->GetChild( i ), pLightNodes );
                 }
             }
         }

@@ -139,7 +139,7 @@ namespace RT::OMP
                         if( _mm_cvtss_i32( TEST ) )
                         {
                             vec4 intersectionFactor;
-                            _mm_store_ps( &intersectionFactor.data, T );
+                            _mm_store_ps( &intersectionFactor.data, DIST );
 
                             return intersectionFactor;
                         }

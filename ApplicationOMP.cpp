@@ -1,7 +1,9 @@
 #include "ApplicationOMP.h"
 #include "File.h"
+#include <atomic>
 #include <iostream>
 #include <omp.h>
+#include <tbb/concurrent_vector.h>
 
 /***************************************************************************************\
 
@@ -16,6 +18,8 @@ RT::ApplicationOMP::ApplicationOMP( const RT::CommandLineArguments& cmdargs )
     : Application( cmdargs )
     , m_Scene()
 {
+    srand( 1 );
+
     m_Scene = m_SceneLoader.LoadScene<OMP::SceneTraits>( m_CommandLineArguments.appInputFilename );
 
     if( m_CommandLineArguments.appAdjustAspect != -1.0f )
@@ -52,7 +56,7 @@ int RT::ApplicationOMP::Run()
     const auto primaryRays = m_Scene.Cameras[0].SpawnPrimaryRays( X, Y );
     const int primaryRayCount = primaryRays.size();
 
-    std::vector<RT::vec4> intersections( primaryRays.size() );
+    std::vector<RayTriangleIntersection> intersections( primaryRays.size() );
 
     struct char3 { png_byte r, g, b; };
     std::vector<char3> pDstImageData( primaryRays.size() );
@@ -62,28 +66,35 @@ int RT::ApplicationOMP::Run()
 #   pragma omp parallel for
     for( int i = 0; i < primaryRayCount; ++i )
     {
-        intersections[i] = vec4( std::numeric_limits<RT::float_t>::infinity() );
+        intersections[i].pTriangle = nullptr;
+        intersections[i].ColorDistance = vec4( std::numeric_limits<RT::float_t>::infinity() );
 
-        for( auto object : m_Scene.Objects )
+        for( auto& object : m_Scene.Objects )
         {
             if( m_CommandLineArguments.appDisableBoundingBoxes || primaryRays[i].Intersect( object.BoundingBox ) )
             {
-                for( auto triangle : object.Triangles )
+                for( auto& triangle : object.Triangles )
                 {
                     RT::vec4 intersection = primaryRays[i].Intersect( triangle );
 
-                    if( intersection.x != std::numeric_limits<RT::float_t>::infinity() )
+                    if( intersection.w != std::numeric_limits<RT::float_t>::infinity() )
                     {
-                        if( intersection.x < intersections[i].x )
+                        if( intersection.w < intersections[i].ColorDistance.w )
                         {
-                            intersections[i].x = intersection.x;
+                            intersections[i].pTriangle = &triangle;
+
+                            intersections[i].ColorDistance.w = intersection.w;
+
+                            intersections[i].ColorDistance.x = object.Color.x;
+                            intersections[i].ColorDistance.y = object.Color.y;
+                            intersections[i].ColorDistance.z = object.Color.z;
                         }
                     }
                 }
             }
         }
 
-        if( intersections[i].x == std::numeric_limits<RT::float_t>::infinity() )
+        if( intersections[i].ColorDistance.w == std::numeric_limits<RT::float_t>::infinity() )
         {
             pDstImageData[i].r = 0;
             pDstImageData[i].g = 0;
@@ -91,9 +102,57 @@ int RT::ApplicationOMP::Run()
         }
         else
         {
-            pDstImageData[i].r = 255;
-            pDstImageData[i].g = 255;
-            pDstImageData[i].b = 255;
+            // Ray from intersection to light
+            float intensity = 0.5;
+            __m128 DIST, O, D, LO, INTENSITY, BIAS;
+            DIST = _mm_set1_ps( intersections[i].ColorDistance.w );
+            BIAS = _mm_set1_ps( 0.05f );
+            DIST = _mm_sub_ps( DIST, BIAS );
+            O = _mm_load_ps( &primaryRays[i].Origin.data );
+            D = _mm_load_ps( &primaryRays[i].Direction.data );
+            O = _mm_fmadd_ps( DIST, D, O );
+            LO = _mm_load_ps( &m_Scene.Lights[0].Position.data );
+            D = _mm_sub_ps( LO, O );
+            INTENSITY = _mm_mul_ps( D, D );
+            INTENSITY = _mm_rcp_ps( INTENSITY );
+            D = Normalize3( D );
+
+            RT::OMP::Ray secondaryRay;
+            _mm_store_ps( &secondaryRay.Origin.data, O );
+            _mm_store_ps( &secondaryRay.Direction.data, D );
+
+            bool inTheShadows = false;
+
+            for( auto& object : m_Scene.Objects )
+            {
+                if( m_CommandLineArguments.appDisableBoundingBoxes || secondaryRay.Intersect( object.BoundingBox ) )
+                {
+                    for( auto& triangle : object.Triangles )
+                    {
+                        RT::vec4 intersection = secondaryRay.Intersect( triangle );
+
+                        if( intersection.w != std::numeric_limits<RT::float_t>::infinity() )
+                        {
+                            inTheShadows = true;
+                            break;
+                        }
+                    }
+                }
+
+                if( inTheShadows )
+                {
+                    break;
+                }
+            }
+
+            if( !inTheShadows )
+            {
+                intensity *= 2;
+            }
+
+            pDstImageData[i].r = std::min( 255.0f, intersections[i].ColorDistance.x * intensity );
+            pDstImageData[i].g = std::min( 255.0f, intersections[i].ColorDistance.y * intensity );
+            pDstImageData[i].b = std::min( 255.0f, intersections[i].ColorDistance.z * intensity );
         }
     }
 

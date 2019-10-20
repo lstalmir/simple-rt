@@ -10,5 +10,6 @@ namespace RT::OMP
     {
         Box BoundingBox;
         std::vector<Triangle> Triangles;
+        RT::vec4 Color;
     };
 }

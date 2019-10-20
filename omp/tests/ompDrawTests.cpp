@@ -22,7 +22,6 @@ TEST( ompDrawTests, Draw_Test )
     camera.Origin = RT::vec4( 0, 0, 0 );
     camera.Up = RT::vec4( 0, 1, 0 );
     camera.AspectRatio = 1;
-    camera.FocalLength = 1;
     camera.HorizontalFOV = RT::Radians( 75 );
 
     auto primaryRays = camera.SpawnPrimaryRays( horizontalRays, verticalRays );

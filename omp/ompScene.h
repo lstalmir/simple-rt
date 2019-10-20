@@ -2,6 +2,7 @@
 #include "../Scene.h"
 #include "ompCamera.h"
 #include "ompObject.h"
+#include <algorithm>
 #include <fbxsdk.h>
 
 namespace RT::OMP
@@ -42,9 +43,8 @@ namespace RT::OMP
             ompCamera.Origin = position;
             ompCamera.Direction = direction;
             ompCamera.Up = up;
-            ompCamera.HorizontalFOV = RT::Radians( 45 );
+            ompCamera.HorizontalFOV = RT::Radians( fov );
             ompCamera.AspectRatio = aspect;
-            ompCamera.FocalLength = 1;
 
             return ompCamera;
         }
@@ -75,6 +75,15 @@ namespace RT::OMP
                 tri.A = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 0 )] ) );
                 tri.B = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 1 )] ) );
                 tri.C = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 2 )] ) );
+
+                ompObject.BoundingBox.Xmin = std::min( std::min( tri.A.x, tri.B.x ), std::min( tri.C.x, ompObject.BoundingBox.Xmin ) );
+                ompObject.BoundingBox.Xmax = std::max( std::max( tri.A.x, tri.B.x ), std::max( tri.C.x, ompObject.BoundingBox.Xmax ) );
+
+                ompObject.BoundingBox.Ymin = std::min( std::min( tri.A.y, tri.B.y ), std::min( tri.C.y, ompObject.BoundingBox.Ymin ) );
+                ompObject.BoundingBox.Ymax = std::max( std::max( tri.A.y, tri.B.y ), std::max( tri.C.y, ompObject.BoundingBox.Ymax ) );
+
+                ompObject.BoundingBox.Zmin = std::min( std::min( tri.A.z, tri.B.z ), std::min( tri.C.z, ompObject.BoundingBox.Zmin ) );
+                ompObject.BoundingBox.Zmax = std::max( std::max( tri.A.z, tri.B.z ), std::max( tri.C.z, ompObject.BoundingBox.Zmax ) );
 
                 ompObject.Triangles.push_back( tri );
             }

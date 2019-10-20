@@ -55,12 +55,11 @@ set (ocl
     )
 
 set (omp
+    "omp/ompBox.h"
     "omp/ompCamera.h"
-    "omp/ompIntersect.h"
     "omp/ompObject.h"
     "omp/ompPlane.h"
     "omp/ompRay.h"
-    "omp/ompReflect.h"
     "omp/ompScene.h"
     "omp/ompTriangle.h"
     )

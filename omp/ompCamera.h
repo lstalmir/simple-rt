@@ -13,7 +13,6 @@ namespace RT::OMP
         vec4 Up;
         float_t HorizontalFOV;
         float_t AspectRatio;
-        float_t FocalLength;
 
         inline std::vector<Ray> SpawnPrimaryRays( int horizontal_count, int vertical_count )
         {
@@ -32,11 +31,9 @@ namespace RT::OMP
             NUMi = _mm_set_epi32( 0, 0, vertical_count, horizontal_count );
             NUM = _mm_cvtepi32_ps( NUMi );
             VSTEP = _mm_set_ps( 0, 0, AspectRatio, 1 );
-            STEP = _mm_mul_ps( STEP, VSTEP );
             STEP = _mm_div_ps( STEP, NUM );
             STEP = _mm_tan_ps( STEP );
-            VSTEP = _mm_set1_ps( FocalLength );
-            STEP = _mm_mul_ps( STEP, VSTEP );
+            STEP = _mm_div_ps( STEP, VSTEP );
             VSTEP = _mm_shuffle_ps( STEP, STEP, _MM_SHUFFLE( 1, 1, 1, 1 ) );
             VSTEP = _mm_mul_ps( VSTEP, U );
             HSTEP = _mm_shuffle_ps( STEP, STEP, _MM_SHUFFLE( 0, 0, 0, 0 ) );
@@ -54,7 +51,6 @@ namespace RT::OMP
             NEGi = _mm_set1_epi32( 0x80000000 );
             NEG = _mm_castsi128_ps( NEGi );
             VOFFSET = _mm_mul_ps( VNUM, VSTEP );
-            VOFFSET = _mm_xor_ps( VOFFSET, NEG );
 
             if( (vertical_count & 1) == 0 )
             {
@@ -97,7 +93,7 @@ namespace RT::OMP
                     HOFFSET = _mm_add_ps( HOFFSET, HSTEP );
                 }
 
-                VOFFSET = _mm_add_ps( VOFFSET, VSTEP );
+                VOFFSET = _mm_sub_ps( VOFFSET, VSTEP );
             }
 
             return rays;

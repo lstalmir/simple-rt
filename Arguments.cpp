@@ -181,13 +181,64 @@ namespace
 #define WARN_REDEF( TEST, NAME, ERR ) \
     if( !(TEST) ) ERR << "WARNING: " NAME " redefinition\n"
 
-const char RT::CommandLineArguments::s_pShortOptions[] = "i:o:t";
+namespace
+{
+    template<typename T>
+    struct StandardConverter
+    {
+        inline T operator()( std::string s );
+    };
+
+    template<>
+    struct StandardConverter<float>
+    {
+        inline float operator()( std::string s ) { return std::stof( s ); }
+    };
+
+    template<>
+    struct StandardConverter<int>
+    {
+        inline int operator()( std::string s ) { return std::stoi( s ); }
+    };
+
+    template<>
+    struct StandardConverter<std::string>
+    {
+        inline std::string operator()( std::string s ) { return s; }
+    };
+
+    using FloatConverter = StandardConverter<float>;
+    using IntConverter = StandardConverter<int>;
+    using StringConverter = StandardConverter<std::string>;
+
+    template<typename T, typename Converter = StandardConverter<T>>
+    inline void ParseOptionalArg( T& target )
+    {
+        if( optarg != nullptr )
+        {
+            try
+            {
+                target = Converter()(optarg);
+            }
+            catch( std::exception )
+            {
+                optind--;
+            }
+        }
+    }
+}
+
+const char RT::CommandLineArguments::s_pShortOptions[] = "i:o:tw:h:";
 const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "input", required_argument, 0, 'i' },
     { "output", required_argument, 0, 'o' },
     { "test", no_argument, 0, 't' },
     { "opencl", no_argument, 0, 'ocl' },
     { "openmp", no_argument, 0, 'omp' },
+    { "width", required_argument, 0, 'w' },
+    { "height", required_argument, 0, 'h' },
+    { "adjustaspect", optional_argument, 0, 'aa' },
+    { "disableboundingboxes", no_argument, 0, 'dbbs' },
     { 0, 0, 0, 0 } };
 
 /***************************************************************************************\
@@ -205,6 +256,10 @@ RT::CommandLineArguments::CommandLineArguments()
     , appInputFilename()
     , appOutputFilename()
     , appMode( ApplicationMode::eUndefined )
+    , appWidth( -1 )
+    , appHeight( -1 )
+    , appAdjustAspect( -1.0f )
+    , appDisableBoundingBoxes( false )
     , oclDeviceType( OpenCLDeviceType::eUndefined )
 {
 }
@@ -319,6 +374,38 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
                 cmdargs.appMode = ApplicationMode::eOpenMP;
                 break;
             }
+
+            // Output width
+            case 'w':
+            {
+                WARN_REDEF( cmdargs.appWidth == -1, "Output width", err );
+                cmdargs.appWidth = std::stoi( optarg );
+                break;
+            }
+
+            // Output height
+            case 'h':
+            {
+                WARN_REDEF( cmdargs.appHeight == -1, "Output height", err );
+                cmdargs.appHeight = std::stoi( optarg );
+                break;
+            }
+
+            // Adjust aspect ratio
+            case 'aa':
+            {
+                WARN_REDEF( cmdargs.appAdjustAspect == -1.0f, "Aspect ratio", err );
+                cmdargs.appAdjustAspect = 0.0f;
+                ParseOptionalArg( cmdargs.appAdjustAspect );
+                break;
+            }
+
+            // Disable bounding boxes
+            case 'dbbs':
+            {
+                cmdargs.appDisableBoundingBoxes = true;
+                break;
+            }
         }
     }
 
@@ -355,6 +442,16 @@ bool RT::CommandLineArguments::Validate( std::ostream& err ) const
         if( appOutputFilename.empty() )
         {
             err << "ERROR: Output filename not defined\n";
+            valid = false;
+        }
+        if( appWidth == -1 )
+        {
+            err << "ERROR: Output width not defined\n";
+            valid = false;
+        }
+        if( appHeight == -1 )
+        {
+            err << "ERROR: Output height not defined\n";
             valid = false;
         }
     }

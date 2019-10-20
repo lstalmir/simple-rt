@@ -42,7 +42,10 @@ set (base
     "Arguments.cpp"
     "Arguments.h"
     "Fbx.h"
+    "File.h"
+    "Intrin.h"
     "Main.cpp"
+    "Vec.h"
     )
     
 set (ocl
@@ -54,12 +57,12 @@ set (ocl
 set (omp
     "omp/ompCamera.h"
     "omp/ompIntersect.h"
-    "omp/ompIntrin.h"
+    "omp/ompObject.h"
     "omp/ompPlane.h"
     "omp/ompRay.h"
     "omp/ompReflect.h"
+    "omp/ompScene.h"
     "omp/ompTriangle.h"
-    "omp/ompVector.h"
     )
 
 set (omptests
@@ -67,6 +70,7 @@ set (omptests
     "omp/tests/ompDrawTests.cpp"
     "omp/tests/ompIntersectTests.cpp"
     "omp/tests/ompReflectTests.cpp"
+    "omp/tests/ompSceneTests.cpp"
     "omp/tests/ompVectorTests.cpp"
     )
 

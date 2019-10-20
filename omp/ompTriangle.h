@@ -1,7 +1,7 @@
 #pragma once
-#include "ompVector.h"
+#include "../Vec.h"
 
-namespace RT
+namespace RT::OMP
 {
     struct Triangle
     {

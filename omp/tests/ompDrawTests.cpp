@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include "../ompCamera.h"
-#include "../ompIntersect.h"
 #include "../ompRay.h"
 #include "../../File.h"
 
@@ -18,7 +17,7 @@ TEST( ompDrawTests, Draw_Test )
     constexpr int horizontalRays = 1000;
     constexpr int verticalRays = 1000;
 
-    RT::Camera camera;
+    RT::OMP::Camera camera;
     camera.Direction = RT::vec4( 1, 0, 0 );
     camera.Origin = RT::vec4( 0, 0, 0 );
     camera.Up = RT::vec4( 0, 1, 0 );
@@ -26,10 +25,9 @@ TEST( ompDrawTests, Draw_Test )
     camera.FocalLength = 1;
     camera.HorizontalFOV = RT::Radians( 75 );
 
-    std::vector<RT::Ray> primaryRays( horizontalRays * verticalRays );
-    RT::SpawnPrimaryRays( camera, horizontalRays, verticalRays, primaryRays.data() );
+    auto primaryRays = camera.SpawnPrimaryRays( horizontalRays, verticalRays );
 
-    RT::Triangle tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 5, 0, 2 );
     tri.B = RT::vec4( 5, 0, -2 );
     tri.C = RT::vec4( 5, 2, 0 );
@@ -50,8 +48,8 @@ TEST( ompDrawTests, Draw_Test )
     {
         for( unsigned x = 0; x < horizontalRays; ++x )
         {
-            RT::Ray ray = primaryRays[y * horizontalRays + x];
-            RT::vec4 intersection = RT::Intersect( ray, tri );
+            RT::OMP::Ray ray = primaryRays[y * horizontalRays + x];
+            RT::vec4 intersection = ray.Intersect( tri );
 
             char3* dstPixel = &pDstImageData[x + y * horizontalRays];
 

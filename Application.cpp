@@ -11,6 +11,7 @@ Description:
 \***************************************************************************************/
 RT::Application::Application( const RT::CommandLineArguments& cmdargs )
     : m_CommandLineArguments( cmdargs )
+    , m_SceneLoader()
 {
 }
 

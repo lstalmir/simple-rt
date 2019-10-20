@@ -1,5 +1,6 @@
 #pragma once
 #include "Application.h"
+#include "omp/ompScene.h"
 
 namespace RT
 {
@@ -9,5 +10,8 @@ namespace RT
         ApplicationOMP( const CommandLineArguments& cmdargs );
 
         virtual int Run() override final;
+
+    protected:
+        Scene<OMP::SceneTraits> m_Scene;
     };
 }

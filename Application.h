@@ -1,5 +1,6 @@
 #pragma once
 #include "Arguments.h"
+#include "Scene.h"
 
 namespace RT
 {
@@ -13,5 +14,6 @@ namespace RT
 
     protected:
         CommandLineArguments m_CommandLineArguments;
+        SceneLoader m_SceneLoader;
     };
 }

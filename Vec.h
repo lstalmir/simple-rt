@@ -1,4 +1,5 @@
 #pragma once
+#include <fbxsdk.h>
 #include <limits>
 
 namespace RT
@@ -31,6 +32,36 @@ namespace RT
         // Initialize vector with components
         inline explicit vec4( float_t x_, float_t y_, float_t z_ = 0, float_t w_ = 0 )
             : x( x_ ), y( y_ ), z( z_ ), w( w_ )
+        {
+        }
+
+        // Initialize from FBXSDK vector
+        inline explicit vec4( const fbxsdk::FbxVector4& v_ )
+            : x( static_cast<float_t>(v_[0]) ), y( static_cast<float_t>(v_[1]) ), z( static_cast<float_t>(v_[2]) ), w( static_cast<float_t>(v_[3]) )
+        {
+        }
+
+        // Initialize from FBXSDK vector
+        inline explicit vec4( const fbxsdk::FbxVector2& v_ )
+            : x( static_cast<float_t>(v_[0]) ), y( static_cast<float_t>(v_[1]) ), z( 0 ), w( 0 )
+        {
+        }
+
+        // Initialize from FBXSDK vector
+        inline explicit vec4( const fbxsdk::FbxDouble4& v_ )
+            : x( static_cast<float_t>(v_[0]) ), y( static_cast<float_t>(v_[1]) ), z( static_cast<float_t>(v_[2]) ), w( static_cast<float_t>(v_[3]) )
+        {
+        }
+
+        // Initialize from FBXSDK vector
+        inline explicit vec4( const fbxsdk::FbxDouble3& v_ )
+            : x( static_cast<float_t>(v_[0]) ), y( static_cast<float_t>(v_[1]) ), z( static_cast<float_t>(v_[2]) ), w( 0 )
+        {
+        }
+
+        // Initialize from FBXSDK vector
+        inline explicit vec4( const fbxsdk::FbxDouble2& v_ )
+            : x( static_cast<float_t>(v_[0]) ), y( static_cast<float_t>(v_[1]) ), z( 0 ), w( 0 )
         {
         }
     };

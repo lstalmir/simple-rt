@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
-#include "../ompIntersect.h"
-#include "../ompIntrin.h"
+#include "../../Intrin.h"
 #include "../ompRay.h"
 #include "../ompPlane.h"
 #include "../ompTriangle.h"
@@ -16,20 +15,20 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Plane )
 {
-    RT::Ray ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, -1, 0 );
     
-    RT::Plane plane;
+    RT::OMP::Plane plane;
     plane.Origin = RT::vec4( 0 );
     plane.Normal = RT::vec4( 0, 1 );
 
-    RT::vec4 intersectionPoint = RT::Intersect( ray, plane );
+    RT::vec4 intersectionPoint = ray.Intersect( plane );
 
-    EXPECT_NEAR( intersectionPoint.x, 1.0f, 0.01f );
-    EXPECT_NEAR( intersectionPoint.y, 0.0f, 0.01f );
-    EXPECT_NEAR( intersectionPoint.z, 0.0f, 0.01f );
-    EXPECT_NEAR( intersectionPoint.w, 0.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.x * ray.Direction.x + ray.Origin.x, 1.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.y * ray.Direction.y + ray.Origin.y, 0.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.z * ray.Direction.z + ray.Origin.z, 0.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.w * ray.Direction.w + ray.Origin.w, 0.0f, 0.01f );
 }
 
 /***************************************************************************************\
@@ -43,15 +42,15 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Plane_Parallel )
 {
-    RT::Ray ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, 0, 0 );
 
-    RT::Plane plane;
+    RT::OMP::Plane plane;
     plane.Origin = RT::vec4( 0 );
     plane.Normal = RT::vec4( 0, 1 );
 
-    RT::vec4 intersectionPoint = RT::Intersect( ray, plane );
+    RT::vec4 intersectionPoint = ray.Intersect( plane );
 
     EXPECT_FLOAT_EQ( intersectionPoint.x, std::numeric_limits<RT::float_t>::infinity() );
     EXPECT_FLOAT_EQ( intersectionPoint.y, std::numeric_limits<RT::float_t>::infinity() );
@@ -70,15 +69,15 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Plane_Behind )
 {
-    RT::Ray ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, 0, 0 );
 
-    RT::Plane plane;
+    RT::OMP::Plane plane;
     plane.Origin = RT::vec4( -1, 0, 0 );
     plane.Normal = RT::vec4( 1, 0, 0 );
 
-    RT::vec4 intersectionPoint = RT::Intersect( ray, plane );
+    RT::vec4 intersectionPoint = ray.Intersect( plane );
 
     EXPECT_FLOAT_EQ( intersectionPoint.x, std::numeric_limits<RT::float_t>::infinity() );
     EXPECT_FLOAT_EQ( intersectionPoint.y, std::numeric_limits<RT::float_t>::infinity() );
@@ -97,21 +96,21 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle )
 {
-    RT::Ray ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, -1, 0 );
 
-    RT::Triangle tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 1, -2, 2 );
     tri.B = RT::vec4( 1, -2, -2 );
     tri.C = RT::vec4( 1, 2, -2 );
 
-    RT::vec4 intersectionPoint = RT::Intersect( ray, tri );
+    RT::vec4 intersectionPoint = ray.Intersect( tri );
 
-    EXPECT_NEAR( intersectionPoint.x, 1.0f, 0.01f );
-    EXPECT_NEAR( intersectionPoint.y, 0.0f, 0.01f );
-    EXPECT_NEAR( intersectionPoint.z, 0.0f, 0.01f );
-    EXPECT_NEAR( intersectionPoint.w, 0.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.x * ray.Direction.x + ray.Origin.x, 1.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.y * ray.Direction.y + ray.Origin.y, 0.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.z * ray.Direction.z + ray.Origin.z, 0.0f, 0.01f );
+    EXPECT_NEAR( intersectionPoint.w * ray.Direction.w + ray.Origin.w, 0.0f, 0.01f );
 }
 
 /***************************************************************************************\
@@ -125,16 +124,16 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle_Parallel )
 {
-    RT::Ray ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 0, 1, 0 );
 
-    RT::Triangle tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 1, -2, 2 );
     tri.B = RT::vec4( 1, -2, -2 );
     tri.C = RT::vec4( 1, 2, -2 );
 
-    RT::vec4 intersectionPoint = RT::Intersect( ray, tri );
+    RT::vec4 intersectionPoint = ray.Intersect( tri );
 
     EXPECT_FLOAT_EQ( intersectionPoint.x, std::numeric_limits<RT::float_t>::infinity() );
     EXPECT_FLOAT_EQ( intersectionPoint.y, std::numeric_limits<RT::float_t>::infinity() );
@@ -152,16 +151,16 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle_Miss )
 {
-    RT::Ray ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, -1, 0 );
 
-    RT::Triangle tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 100, -2, 2 );
     tri.B = RT::vec4( 100, -2, -2 );
     tri.C = RT::vec4( 100, 2, -2 );
 
-    RT::vec4 intersectionPoint = RT::Intersect( ray, tri );
+    RT::vec4 intersectionPoint = ray.Intersect( tri );
 
     EXPECT_FLOAT_EQ( intersectionPoint.x, std::numeric_limits<RT::float_t>::infinity() );
     EXPECT_FLOAT_EQ( intersectionPoint.y, std::numeric_limits<RT::float_t>::infinity() );
@@ -180,16 +179,16 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle_Behind )
 {
-    RT::Ray ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( -1, 1, 0 );
 
-    RT::Triangle tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 1, -2, 2 );
     tri.B = RT::vec4( 1, -2, -2 );
     tri.C = RT::vec4( 1, 2, -2 );
 
-    RT::vec4 intersectionPoint = RT::Intersect( ray, tri );
+    RT::vec4 intersectionPoint = ray.Intersect( tri );
 
     EXPECT_FLOAT_EQ( intersectionPoint.x, std::numeric_limits<RT::float_t>::infinity() );
     EXPECT_FLOAT_EQ( intersectionPoint.y, std::numeric_limits<RT::float_t>::infinity() );

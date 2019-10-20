@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "../ompIntrin.h"
-#include "../ompVector.h"
+#include "../../Intrin.h"
+#include "../../Vec.h"
 
 /***************************************************************************************\
 

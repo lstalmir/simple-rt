@@ -6,11 +6,13 @@ namespace RT::OMP
 {
     struct Box
     {
-        float_t Xmin = std::numeric_limits<float_t>::infinity();
-        float_t Xmax = -std::numeric_limits<float_t>::infinity();
-        float_t Ymin = std::numeric_limits<float_t>::infinity();
-        float_t Ymax = -std::numeric_limits<float_t>::infinity();
-        float_t Zmin = std::numeric_limits<float_t>::infinity();
-        float_t Zmax = -std::numeric_limits<float_t>::infinity();
+        vec4 Min;
+        vec4 Max;
+
+        inline Box()
+        {
+            Min = vec4( std::numeric_limits<float_t>::infinity() );
+            Max = vec4( -std::numeric_limits<float_t>::infinity() );
+        }
     };
 }

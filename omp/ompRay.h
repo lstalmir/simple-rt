@@ -153,13 +153,13 @@ namespace RT::OMP
 
         inline bool Intersect( const Box & box ) const
         {
-            float tmin = (box.Xmin - Origin.x) / Direction.x;
-            float tmax = (box.Xmax - Origin.x) / Direction.x;
+            float tmin = (box.Min.x - Origin.x) / Direction.x;
+            float tmax = (box.Max.x - Origin.x) / Direction.x;
 
             if( tmin > tmax ) std::swap( tmin, tmax );
 
-            float tymin = (box.Ymin - Origin.y) / Direction.y;
-            float tymax = (box.Ymax - Origin.y) / Direction.y;
+            float tymin = (box.Min.y - Origin.y) / Direction.y;
+            float tymax = (box.Max.y - Origin.y) / Direction.y;
 
             if( tymin > tymax ) std::swap( tymin, tymax );
 
@@ -172,8 +172,8 @@ namespace RT::OMP
             if( tymax < tmax )
                 tmax = tymax;
 
-            float tzmin = (box.Zmin - Origin.z) / Direction.z;
-            float tzmax = (box.Zmax - Origin.z) / Direction.z;
+            float tzmin = (box.Min.z - Origin.z) / Direction.z;
+            float tzmax = (box.Max.z - Origin.z) / Direction.z;
 
             if( tzmin > tzmax ) std::swap( tzmin, tzmax );
 

@@ -103,52 +103,68 @@ int RT::ApplicationOMP::Run()
         else
         {
             // Ray from intersection to light
-            float intensity = 0.5;
-            __m128 DIST, O, D, LO, INTENSITY, BIAS;
+            float intensity = 1;
+            __m128 DIST, O, D, LO, BIAS;
             DIST = _mm_set1_ps( intersections[i].ColorDistance.w );
-            BIAS = _mm_set1_ps( 0.05f );
+            BIAS = _mm_set1_ps( 0.04f );
             DIST = _mm_sub_ps( DIST, BIAS );
             O = _mm_load_ps( &primaryRays[i].Origin.data );
             D = _mm_load_ps( &primaryRays[i].Direction.data );
             O = _mm_fmadd_ps( DIST, D, O );
-            LO = _mm_load_ps( &m_Scene.Lights[0].Position.data );
-            D = _mm_sub_ps( LO, O );
-            INTENSITY = _mm_mul_ps( D, D );
-            INTENSITY = _mm_rcp_ps( INTENSITY );
-            D = Normalize3( D );
 
             RT::OMP::Ray secondaryRay;
             _mm_store_ps( &secondaryRay.Origin.data, O );
-            _mm_store_ps( &secondaryRay.Direction.data, D );
 
-            bool inTheShadows = false;
-
-            for( auto& object : m_Scene.Objects )
+            for( int i = 0; i < 30; ++i )
             {
-                if( m_CommandLineArguments.appDisableBoundingBoxes || secondaryRay.Intersect( object.BoundingBox ) )
-                {
-                    for( auto& triangle : object.Triangles )
-                    {
-                        RT::vec4 intersection = secondaryRay.Intersect( triangle );
+                // Simulate light size for soft shadows
+                __m128 NOISE = _mm_set_ps( 0,
+                    static_cast<RT::float_t>(rand()) / RAND_MAX,
+                    static_cast<RT::float_t>(rand()) / RAND_MAX,
+                    static_cast<RT::float_t>(rand()) / RAND_MAX );
 
-                        if( intersection.w != std::numeric_limits<RT::float_t>::infinity() )
+                LO = _mm_load_ps( &m_Scene.Lights[0].Position.data );
+                LO = _mm_add_ps( LO, NOISE );
+                D = _mm_sub_ps( LO, O );
+                D = Normalize3( D );
+
+                _mm_store_ps( &secondaryRay.Direction.data, D );
+
+                bool inTheShadows = false;
+
+                for( auto& object : m_Scene.Objects )
+                {
+                    if( m_CommandLineArguments.appDisableBoundingBoxes || secondaryRay.Intersect( object.BoundingBox ) )
+                    {
+                        for( auto& triangle : object.Triangles )
                         {
-                            inTheShadows = true;
-                            break;
+                            RT::vec4 intersection = secondaryRay.Intersect( triangle );
+
+                            if( intersection.w != std::numeric_limits<RT::float_t>::infinity() )
+                            {
+                                inTheShadows = true;
+                                break;
+                            }
                         }
+                    }
+
+                    if( inTheShadows )
+                    {
+                        break;
                     }
                 }
 
-                if( inTheShadows )
+                if( !inTheShadows )
                 {
-                    break;
+                    intensity += 1;
+                }
+                else
+                {
+                    intensity += 0.2;
                 }
             }
 
-            if( !inTheShadows )
-            {
-                intensity *= 2;
-            }
+            intensity /= 30;
 
             pDstImageData[i].r = std::min( 255.0f, intersections[i].ColorDistance.x * intensity );
             pDstImageData[i].g = std::min( 255.0f, intersections[i].ColorDistance.y * intensity );

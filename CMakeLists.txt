@@ -3,18 +3,17 @@ cmake_minimum_required (VERSION 2.8)
 project (simple-rt)
 
 set (gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-add_subdirectory (gtest)
-
-add_subdirectory (zlib)
+add_subdirectory (third-party/gtest)
+add_subdirectory (third-party/zlib)
 
 set (PNG_BUILD_ZLIB ON)
 set (PNG_LINK_ZLIB_STATIC OFF)
 set (SKIP_INSTALL_EXPORT ON)
-set (ZLIB_INCLUDE_DIR ${CMAKE_BINARY_DIR}/zlib ${CMAKE_SOURCE_DIR}/zlib)
+set (ZLIB_INCLUDE_DIR ${CMAKE_BINARY_DIR}/third-party/zlib ${CMAKE_SOURCE_DIR}/third-party/zlib)
 set (ZLIB_LIBRARY zlib)
-add_subdirectory (libpng)
+add_subdirectory (third-party/libpng)
 
-set (TBB_DIR ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/cmake)
+set (TBB_DIR ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/cmake)
 
 find_package (TBB REQUIRED)
 find_package (OpenCL REQUIRED)
@@ -40,8 +39,6 @@ set (base
     "ApplicationFactory.h"
     "ApplicationOCL.cpp"
     "ApplicationOCL.h"
-    "ApplicationOMP.cpp"
-    "ApplicationOMP.h"
     "ApplicationTest.cpp"
     "ApplicationTest.h"
     "Arguments.cpp"
@@ -61,6 +58,7 @@ set (ocl
     )
 
 set (omp
+    "omp/ompApplication.h"
     "omp/ompBox.h"
     "omp/ompCamera.h"
     "omp/ompLight.h"
@@ -95,52 +93,52 @@ target_link_libraries (simple-rt gtest_main)
 target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googletest/include
     PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googlemock/include)
-
+    
 # TBB
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/include
-    PRIVATE ${CMAKE_SOURCE_DIR}/pstl2019_20191006oss/include)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/pstl2019_20191006oss/include)
 
 if (UNIX)
 
     target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8)
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8)
         
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb.so
+                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb.so
                 ${CMAKE_BINARY_DIR}/libtbb.so)
                 
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb_debug.so
+                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb_debug.so
                 ${CMAKE_BINARY_DIR}/libtbb_debug.so)
 
 elseif (WIN32)
 
     target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/lib/${tbb_arch}/vc14)
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/vc14)
         
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb.dll
+                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb.dll
                 ${CMAKE_BINARY_DIR}/tbb.dll)
                 
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb_debug.dll
+                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb_debug.dll
                 ${CMAKE_BINARY_DIR}/tbb_debug.dll)
 
 endif ()
 
 # OpenCL
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/opencl-headers
-    PRIVATE ${CMAKE_SOURCE_DIR}/opencl-clhpp/include)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/opencl-headers
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/opencl-clhpp/include)
 
 target_link_libraries (simple-rt ${OpenCL_LIBRARY})
 
@@ -151,40 +149,40 @@ set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS
     
 # FBXSDK
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/fbxsdk/include)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/include)
 
 if (UNIX)
 
     target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/fbxsdk/lib/gcc/${architecture}/release)
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/gcc/${architecture}/release)
 
     target_link_libraries (simple-rt libfbxsdk.a)
 
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/fbxsdk/lib/gcc/${architecture}/release/libfbxsdk.so
+                ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/gcc/${architecture}/release/libfbxsdk.so
                 ${CMAKE_BINARY_DIR}/libfbxsdk.so)
 
 elseif (WIN32)
 
     target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/fbxsdk/lib/vs2017/${architecture}/release)
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/vs2017/${architecture}/release)
 
     target_link_libraries (simple-rt libfbxsdk.lib)
 
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/fbxsdk/lib/vs2017/${architecture}/release/libfbxsdk.dll
+                ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/vs2017/${architecture}/release/libfbxsdk.dll
                 ${CMAKE_BINARY_DIR}/libfbxsdk.dll)
 
 endif ()
 
 # zlib
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/zlib
-    PRIVATE ${CMAKE_BINARY_DIR}/zlib)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/zlib
+    PRIVATE ${CMAKE_BINARY_DIR}/third-party/zlib)
 
 target_link_libraries (simple-rt zlib)
 
@@ -196,8 +194,8 @@ add_custom_command (
         
 # libpng
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/libpng
-    PRIVATE ${CMAKE_BINARY_DIR}/libpng)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/libpng
+    PRIVATE ${CMAKE_BINARY_DIR}/third-party/libpng)
 
 target_link_libraries (simple-rt png)
 
@@ -206,4 +204,3 @@ add_custom_command (
     COMMAND ${CMAKE_COMMAND} -E copy
             $<TARGET_FILE:png>
             ${CMAKE_BINARY_DIR}/$<TARGET_FILE_NAME:png>)
-        

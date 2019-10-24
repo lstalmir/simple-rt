@@ -8,14 +8,15 @@
 
 namespace RT::OMP
 {
+    template<bool EnableIntrinsics_ = true>
     struct SceneTypes
     {
-        using CameraType = RT::OMP::Camera;
-        using ObjectType = RT::OMP::Object;
-        using LightType = RT::OMP::Light;
+        using CameraType = RT::OMP::Camera<EnableIntrinsics_>;
+        using ObjectType = RT::OMP::Object<EnableIntrinsics_>;
+        using LightType = RT::OMP::Light<EnableIntrinsics_>;
     };
 
-    template<typename SceneTypes = RT::OMP::SceneTypes>
+    template<typename SceneTypes = RT::OMP::SceneTypes<>>
     class SceneFunctions
     {
     public:
@@ -33,12 +34,8 @@ namespace RT::OMP
             RT::float_t focal = static_cast<RT::float_t>(pCamera->FocalLength.Get());
 
             // Evaluate direction
-            __m128 O, T, D;
-            O = _mm_load_ps( &position.data );
-            T = _mm_load_ps( &target.data );
-            D = _mm_sub_ps( T, O );
-            D = Normalize3( D );
-            _mm_store_ps( &direction.data, D );
+            direction = target - position;
+            direction.Normalize3();
 
             // Store camera properties in internal structure
             typename SceneTypes::CameraType ompCamera;
@@ -55,6 +52,7 @@ namespace RT::OMP
         {
             typename SceneTypes::LightType ompLight;
             ompLight.Position = RT::vec4( pLightNode->LclTranslation.Get() );
+            ompLight.Subdivs = 30;
 
             return ompLight;
         }
@@ -81,7 +79,7 @@ namespace RT::OMP
             // Iterate over all polygons in the mesh
             for( int poly = 0; poly < polygonCount; ++poly )
             {
-                RT::OMP::Triangle tri;
+                typename SceneTypes::ObjectType::TriangleType tri;
                 tri.A = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 0 )] ) );
                 tri.B = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 1 )] ) );
                 tri.C = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 2 )] ) );
@@ -154,6 +152,4 @@ namespace RT::OMP
             return pElementElements->GetDirectArray().GetAt( index );
         }
     };
-
-    using SceneTraits = RT::MakeSceneTraits<SceneTypes, SceneFunctions<SceneTypes>>;
 }

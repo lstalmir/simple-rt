@@ -4,6 +4,7 @@
 
 namespace RT::OMP
 {
+    template<bool EnableIntrinsics = true>
     struct Box
     {
         vec4 Min;

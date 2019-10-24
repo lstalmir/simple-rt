@@ -1,15 +1,15 @@
 [submodule "gtest"]
-	path = gtest
+	path = third-party/gtest
 	url = https://github.com/google/googletest
 [submodule "opencl-headers"]
-	path = opencl-headers
+	path = third-party/opencl-headers
 	url = https://github.com/KhronosGroup/OpenCL-Headers
 [submodule "opencl-clhpp"]
-	path = opencl-clhpp
+	path = third-party/opencl-clhpp
 	url = https://github.com/KhronosGroup/OpenCL-CLHPP
 [submodule "libpng"]
-	path = libpng
+	path = third-party/libpng
 	url = https://github.com/glennrp/libpng
 [submodule "zlib"]
-	path = zlib
+	path = third-party/zlib
 	url = https://github.com/madler/zlib

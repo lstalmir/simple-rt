@@ -4,3 +4,6 @@ fbxsdk/
 .vscode/
 .vs/
 /gnuplot
+build-*/
+CMakeSettings.json
+*.user

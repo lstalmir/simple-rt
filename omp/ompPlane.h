@@ -3,6 +3,7 @@
 
 namespace RT::OMP
 {
+    template<bool EnableIntrinsics = true>
     struct alignas(32) Plane
     {
         vec4 Origin;

@@ -6,10 +6,14 @@
 
 namespace RT::OMP
 {
+    template<bool EnableIntrinsics = true>
     struct Object
     {
-        Box BoundingBox;
-        std::vector<Triangle> Triangles;
+        using BoxType = Box<EnableIntrinsics>;
+        using TriangleType = Triangle<EnableIntrinsics>;
+
+        BoxType BoundingBox;
+        std::vector<TriangleType> Triangles;
         RT::vec4 Color;
     };
 }

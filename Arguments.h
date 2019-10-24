@@ -14,6 +14,12 @@ namespace RT
         eOpenCL
     };
 
+    enum class ApplicationIntrinMode
+    {
+        eDisabled,
+        eEnabled
+    };
+
     enum class OpenCLDeviceType
     {
         eUndefined,
@@ -33,16 +39,17 @@ namespace RT
 
         bool Validate( std::ostream& err ) const;
 
-        int                 argc;
-        char**              argv;
-        std::string         appInputFilename;
-        std::string         appOutputFilename;
-        ApplicationMode     appMode;
-        int                 appWidth;
-        int                 appHeight;
-        float               appAdjustAspect;
-        bool                appDisableBoundingBoxes;
-        OpenCLDeviceType    oclDeviceType;
+        int                     argc;
+        char**                  argv;
+        std::string             appInputFilename;
+        std::string             appOutputFilename;
+        ApplicationMode         appMode;
+        ApplicationIntrinMode   appIntrinMode;
+        int                     appWidth;
+        int                     appHeight;
+        float                   appAdjustAspect;
+        bool                    appDisableBoundingBoxes;
+        OpenCLDeviceType        oclDeviceType;
 
     private:
         static const char s_pShortOptions[];

@@ -64,6 +64,106 @@ namespace RT
             : x( static_cast<float_t>(v_[0]) ), y( static_cast<float_t>(v_[1]) ), z( 0 ), w( 0 )
         {
         }
+
+        // Add two vectors component-wise
+        inline vec4 operator+( const vec4& r ) const
+        {
+            return vec4( x + r.x, y + r.y, z + r.z, w + r.w );
+        }
+
+        // Subtract two vectors component-wise
+        inline vec4 operator-( const vec4& r ) const
+        {
+            return vec4( x - r.x, y - r.y, z - r.z, w - r.w );
+        }
+
+        // Negate vector
+        inline vec4 operator-() const
+        {
+            return vec4( -x, -y, -z, -w );
+        }
+
+        // Multiply two vectors component-wise
+        inline vec4 operator*( const vec4& r ) const
+        {
+            return vec4( x * r.x, y * r.y, z * r.z, w * r.w );
+        }
+
+        // Divide two vectors component-wise
+        inline vec4 operator/( const vec4& r ) const
+        {
+            return vec4( x / r.x, y / r.y, z / r.z, w / r.w );
+        }
+
+        // Compute dot product of two vectors
+        inline float Dot( const vec4& r ) const
+        {
+            return x * r.x + y * r.y + z * r.z + w * r.w;
+        }
+
+        // Compute length of the vector taking into account all 4 components
+        inline float Length4() const
+        {
+            return sqrtf( x * x + y * y + z * z + w * w );
+        }
+
+        // Compute length of the vector taking into account first 3 components
+        inline float Length3() const
+        {
+            return sqrtf( x * x + y * y + z * z );
+        }
+
+        // Compute length of the vector taking into account first 2 components
+        inline float Length2() const
+        {
+            return sqrtf( x * x + y * y );
+        }
+
+        // Compute length of the vector taking into account first component
+        inline float Length1() const
+        {
+            return abs( x );
+        }
+
+        // Normalize the vector taking into account all 4 components
+        inline void Normalize4()
+        {
+            const float length = Length4();
+            x /= length;
+            y /= length;
+            z /= length;
+            w /= length;
+        }
+
+        // Normalize the vector taking into account first 3 components
+        inline void Normalize3()
+        {
+            const float length = Length3();
+            x /= length;
+            y /= length;
+            z /= length;
+            w = 0;
+        }
+
+        // Normalize the vector taking into account first 2 components
+        inline void Normalize2()
+        {
+            const float length = Length2();
+            x /= length;
+            y /= length;
+            z = 0;
+            w = 0;
+        }
+
+        // Normalize the vector taking into account first component
+        inline void Normalize1()
+        {
+            const uint32_t xInt = *reinterpret_cast<uint32_t*>(&x) & 0x80000000 | 0x3F800000;
+            x = *reinterpret_cast<const float*>(&xInt);
+            y = 0;
+            z = 0;
+            w = 0;
+        }
     };
 
     struct alignas(32) vec4_2

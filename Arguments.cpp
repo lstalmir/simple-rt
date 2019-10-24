@@ -235,6 +235,7 @@ const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "test", no_argument, 0, 't' },
     { "opencl", no_argument, 0, 'ocl' },
     { "openmp", no_argument, 0, 'omp' },
+    { "disableintrinsics", no_argument, 0, 'dint' },
     { "width", required_argument, 0, 'w' },
     { "height", required_argument, 0, 'h' },
     { "adjustaspect", optional_argument, 0, 'aa' },
@@ -256,6 +257,7 @@ RT::CommandLineArguments::CommandLineArguments()
     , appInputFilename()
     , appOutputFilename()
     , appMode( ApplicationMode::eUndefined )
+    , appIntrinMode( ApplicationIntrinMode::eEnabled )
     , appWidth( -1 )
     , appHeight( -1 )
     , appAdjustAspect( -1.0f )
@@ -351,7 +353,7 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
                 break;
             }
 
-            // Test test
+            // Test
             case 't':
             {
                 WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
@@ -359,7 +361,7 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
                 break;
             }
 
-            // OpenCL test
+            // OpenCL
             case 'ocl':
             {
                 WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
@@ -367,11 +369,19 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
                 break;
             }
 
-            // OpenMP test
+            // OpenMP
             case 'omp':
             {
                 WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
                 cmdargs.appMode = ApplicationMode::eOpenMP;
+                break;
+            }
+
+            // Disable intrinsics
+            case 'dint':
+            {
+                WARN_REDEF( cmdargs.appIntrinMode == ApplicationIntrinMode::eEnabled, "Application intrin mode", err );
+                cmdargs.appIntrinMode = ApplicationIntrinMode::eDisabled;
                 break;
             }
 

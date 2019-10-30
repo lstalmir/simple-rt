@@ -17,7 +17,7 @@ TEST( ompDrawTests, Draw_Test )
     constexpr int horizontalRays = 1000;
     constexpr int verticalRays = 1000;
 
-    RT::OMP::Camera camera;
+    RT::OMP::Camera<true> camera;
     camera.Direction = RT::vec4( 1, 0, 0 );
     camera.Origin = RT::vec4( 0, 0, 0 );
     camera.Up = RT::vec4( 0, 1, 0 );
@@ -26,7 +26,7 @@ TEST( ompDrawTests, Draw_Test )
 
     auto primaryRays = camera.SpawnPrimaryRays( horizontalRays, verticalRays );
 
-    RT::OMP::Triangle tri;
+    RT::OMP::Triangle<true> tri;
     tri.A = RT::vec4( 5, 0, 2 );
     tri.B = RT::vec4( 5, 0, -2 );
     tri.C = RT::vec4( 5, 2, 0 );
@@ -47,7 +47,7 @@ TEST( ompDrawTests, Draw_Test )
     {
         for( unsigned x = 0; x < horizontalRays; ++x )
         {
-            RT::OMP::Ray ray = primaryRays[y * horizontalRays + x];
+            RT::OMP::Ray<true> ray = primaryRays[y * horizontalRays + x];
             RT::vec4 intersection = ray.Intersect( tri );
 
             char3* dstPixel = &pDstImageData[x + y * horizontalRays];

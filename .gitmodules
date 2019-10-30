@@ -13,3 +13,6 @@
 [submodule "third-party/libpng"]
 	path = third-party/libpng
 	url = https://github.com/glennrp/libpng
+[submodule "third-party/sse_mathfun_ext"]
+	path = third-party/sse_mathfun_ext
+	url = https://github.com/luki1129/sse_mathfun_extension

@@ -84,15 +84,21 @@ add_executable (simple-rt ${base} ${ocl} ${omp} ${omptests})
 if (MSVC)
     #target_compile_options (simple-rt PUBLIC /arch:SSE3)
 else ()
-    target_compile_options (simple-rt PUBLIC -msse3)
+    target_compile_options (simple-rt PUBLIC -msse3 -mfma)
+endif ()
+
+# SSE extension for linux
+if (UNIX)
+    target_include_directories (simple-rt
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/sse_mathfun_ext)
 endif ()
 
 # gtest
 target_link_libraries (simple-rt gtest_main)
 
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googletest/include
-    PRIVATE ${CMAKE_SOURCE_DIR}/gtest/googlemock/include)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/gtest/googletest/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/gtest/googlemock/include)
     
 # TBB
 target_include_directories (simple-rt
@@ -103,6 +109,8 @@ if (UNIX)
 
     target_link_directories (simple-rt
         PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8)
+
+    target_compile_options (simple-rt PUBLIC -ltbb)
         
     add_custom_command (
         TARGET simple-rt POST_BUILD
@@ -157,6 +165,10 @@ if (UNIX)
         PRIVATE ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/gcc/${architecture}/release)
 
     target_link_libraries (simple-rt libfbxsdk.a)
+    target_link_libraries (simple-rt ${CMAKE_DL_LIBS})
+
+    find_package (LibXml2 REQUIRED)
+    target_link_libraries (simple-rt ${LIBXML2_LIBRARIES})
 
     add_custom_command (
         TARGET simple-rt POST_BUILD

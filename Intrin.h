@@ -1,6 +1,14 @@
 #pragma once
 #include <immintrin.h>
 
+#if !defined _MSC_VER
+#define USE_SSE2
+#include <sse_mathfun_extension.h>
+#define _mm_tan_ps tan_ps
+#define _mm_cot_ps cot_ps
+#define _mm_cvtss_i32 _mm_cvtss_si32
+#endif
+
 namespace RT
 {
     inline float Radians( float angle )

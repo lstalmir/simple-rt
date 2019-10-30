@@ -242,8 +242,8 @@ namespace RT::OMP
             inline virtual void Execute() override final
             {
                 // Ray-Object intersection, test bounding box and spawn per-triangle intersections
-                if( pApplication->m_CommandLineArguments.appDisableBoundingBoxes ||
-                    pRay->Intersect( pObject->BoundingBox ) )
+                if( this->pApplication->m_CommandLineArguments.appDisableBoundingBoxes ||
+                    this->pRay->Intersect( pObject->BoundingBox ) )
                 {
                     const size_t triangleCount = pObject->Triangles.size();
 
@@ -252,7 +252,7 @@ namespace RT::OMP
                         // Ray-Triangle intersection
                         RT::vec4 intersection = pRay->Intersect( pObject->Triangles[i] );
 
-                        std::unique_lock lk( pIntersection->Mutex );
+                        std::unique_lock<std::mutex> lk( pIntersection->Mutex );
                         if( intersection.w < pIntersection->Distance )
                         {
                             // Update intersection distance and color

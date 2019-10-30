@@ -17,7 +17,7 @@ TEST( ompCameraTests, SpawnPrimiaryRays_Test )
     constexpr int horizontalRays = 3;
     constexpr int verticalRays = 3;
 
-    RT::OMP::Camera camera;
+    RT::OMP::Camera<true> camera;
     camera.Direction = RT::vec4( 1, 0, 0 );
     camera.Origin = RT::vec4( 0, 0, 0 );
     camera.Up = RT::vec4( 0, 1, 0 );

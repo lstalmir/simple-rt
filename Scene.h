@@ -16,7 +16,7 @@ namespace RT
     class Scene : public SceneTraits::SceneFunctions, public SceneTraits::SceneTypes
     {
     protected:
-        using TT = typename Scene<SceneTraits>;
+        using TT = Scene<SceneTraits>;
     public:
         std::vector<typename TT::CameraType> Cameras;
         std::vector<typename TT::LightType> Lights;
@@ -36,7 +36,7 @@ namespace RT
         template<typename SceneTraits>
         inline Scene<SceneTraits> LoadScene( std::string path )
         {
-            using Scene = typename Scene<SceneTraits>;
+            using Scene = Scene<SceneTraits>;
 
             // Create importer for the scene
             auto pImporter = FbxCreate<fbxsdk::FbxImporter>( m_pFbxManager.get(), "RT_FBX_IMPORTER" );

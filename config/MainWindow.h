@@ -1,5 +1,6 @@
 #pragma once
 #include "ConsoleWindow.h"
+#include "FramebufferWindow.h"
 
 #include <QMainWindow>
 #include <QProcess>
@@ -24,6 +25,7 @@ private:
     Ui::MainWindow *ui;
 
     ConsoleWindow consoleWindow;
+    FramebufferWindow framebufferWindow;
 
     QProcess applicationProc;
 

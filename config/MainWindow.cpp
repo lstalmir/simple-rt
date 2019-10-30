@@ -1,12 +1,13 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 
-MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow),
-    consoleWindow(this)
+MainWindow::MainWindow( QWidget* parent )
+    : QMainWindow( parent )
+    , ui( new Ui::MainWindow )
+    , consoleWindow( this )
+    , framebufferWindow( this )
 {
-    ui->setupUi(this);
+    ui->setupUi( this );
 
     ui->mode_comboBox->clear();
     ui->mode_comboBox->addItem( "", "" );
@@ -14,7 +15,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->mode_comboBox->addItem( "OpenCL", "-opencl" );
     ui->mode_comboBox->addItem( "Test", "-t" );
 
-    connect( &applicationProc, SIGNAL( finished(int,QProcess::ExitStatus) ), this, SLOT( applicationFinished(int,QProcess::ExitStatus) ) );
+    connect( &applicationProc, SIGNAL( finished( int,QProcess::ExitStatus ) ),
+        this, SLOT( applicationFinished( int,QProcess::ExitStatus ) ) );
 }
 
 MainWindow::~MainWindow()
@@ -51,6 +53,15 @@ void MainWindow::applicationFinished( int exitCode, QProcess::ExitStatus )
 
     consoleWindow.print( applicationProc.readAll() );
     consoleWindow.print( "Application exited with code " + QString::number( exitCode ) + "\n" );
+
+    int imagePathArgIndex = applicationProc.arguments().indexOf( "-o" );
+    if( imagePathArgIndex != -1 )
+    {
+        const QString imagePath = applicationProc.arguments().at( imagePathArgIndex + 1 );
+
+        framebufferWindow.show();
+        framebufferWindow.openImage( imagePath );
+    }
 }
 
 QStringList MainWindow::collectArguments() const

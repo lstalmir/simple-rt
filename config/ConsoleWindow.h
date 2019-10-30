@@ -12,7 +12,7 @@ class ConsoleWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit ConsoleWindow(QWidget *parent = nullptr);
+    explicit ConsoleWindow( QWidget *parent = nullptr );
     ~ConsoleWindow();
 
     void clear();

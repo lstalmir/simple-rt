@@ -2,11 +2,11 @@
 #include "ui_ConsoleWindow.h"
 #include <QMutexLocker>
 
-ConsoleWindow::ConsoleWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::ConsoleWindow)
+ConsoleWindow::ConsoleWindow( QWidget* parent )
+    : QMainWindow( parent )
+    , ui( new Ui::ConsoleWindow )
 {
-    ui->setupUi(this);
+    ui->setupUi( this );
     clear();
 }
 
@@ -21,7 +21,7 @@ void ConsoleWindow::clear()
     ui->console->clear();
 }
 
-void ConsoleWindow::print(QString message)
+void ConsoleWindow::print( QString message )
 {
     QMutexLocker lk( &consoleMutex );
     ui->console->appendPlainText( message );

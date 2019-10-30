@@ -26,15 +26,18 @@ CONFIG += c++11
 
 SOURCES += \
         ConsoleWindow.cpp \
+        FramebufferWindow.cpp \
         main.cpp \
         MainWindow.cpp
 
 HEADERS += \
         ConsoleWindow.h \
+        FramebufferWindow.h \
         MainWindow.h
 
 FORMS += \
         ConsoleWindow.ui \
+        FramebufferWindow.ui \
         MainWindow.ui
 
 # Default rules for deployment.

@@ -16,3 +16,6 @@
 [submodule "third-party/sse_mathfun_ext"]
 	path = third-party/sse_mathfun_ext
 	url = https://github.com/luki1129/sse_mathfun_extension
+[submodule "third-party/libxml2"]
+	path = third-party/libxml2
+	url = https://github.com/GNOME/libxml2

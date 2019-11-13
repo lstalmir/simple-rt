@@ -107,10 +107,11 @@ target_include_directories (simple-rt
 
 if (UNIX)
 
-    target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8)
+    link_directories (
+                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8)
 
-    target_compile_options (simple-rt PUBLIC -ltbb)
+    target_link_libraries (simple-rt
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb.so)
         
     add_custom_command (
         TARGET simple-rt POST_BUILD
@@ -126,8 +127,8 @@ if (UNIX)
 
 elseif (WIN32)
 
-    target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/vc14)
+    link_directories (
+                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/vc14)
         
     add_custom_command (
         TARGET simple-rt POST_BUILD
@@ -154,21 +155,21 @@ target_link_libraries (simple-rt ${OpenCL_LIBRARY})
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-    
+
 # FBXSDK
 target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/include)
 
 if (UNIX)
 
-    target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/gcc/${architecture}/release)
+    link_directories (
+                ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/gcc/${architecture}/release)
 
-    target_link_libraries (simple-rt libfbxsdk.a)
-    target_link_libraries (simple-rt ${CMAKE_DL_LIBS})
+    target_link_libraries (simple-rt
+                ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/gcc/${architecture}/release/libfbxsdk.a)
 
-    find_package (LibXml2 REQUIRED)
-    target_link_libraries (simple-rt ${LIBXML2_LIBRARIES})
+    target_link_libraries (simple-rt
+                ${CMAKE_DL_LIBS})
 
     add_custom_command (
         TARGET simple-rt POST_BUILD
@@ -178,8 +179,8 @@ if (UNIX)
 
 elseif (WIN32)
 
-    target_link_directories (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/vs2017/${architecture}/release)
+    link_directories (
+                ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/vs2017/${architecture}/release)
 
     target_link_libraries (simple-rt libfbxsdk.lib)
 
@@ -191,6 +192,38 @@ elseif (WIN32)
 
 endif ()
 
+# LibXML2
+if (UNIX)
+
+    add_custom_command (
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/third-party/libxml2
+        OUTPUT ./Makefile
+        COMMAND ./autogen.sh --prefix=${CMAKE_BINARY_DIR}/third-party/libxml2 --without-python)
+
+    add_custom_command (
+        TARGET simple-rt PRE_BUILD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/third-party/libxml2
+        DEPENDS ./Makefile
+        COMMAND make -j
+        COMMAND make install)
+
+    target_include_directories (simple-rt
+        PRIVATE ${CMAKE_BINARY_DIR}/third-party/libxml2/include)
+
+    link_directories (
+                ${CMAKE_SOURCE_DIR}/third-party/libxml2/lib)
+
+    target_link_libraries (simple-rt
+                ${CMAKE_BINARY_DIR}/third-party/libxml2/lib/libxml2.a)
+
+    add_custom_command (
+        TARGET simple-rt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_BINARY_DIR}/third-party/libxml2/lib/libxml2.so
+                ${CMAKE_BINARY_DIR}/libxml2.so)
+
+endif ()
+    
 # zlib
 target_include_directories (simple-rt
     PRIVATE ${CMAKE_SOURCE_DIR}/third-party/zlib

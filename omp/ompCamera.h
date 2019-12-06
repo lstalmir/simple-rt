@@ -1,15 +1,16 @@
 #pragma once
+#include "../Optimizations.h"
 #include "../Intrin.h"
 #include "../Vec.h"
 #include "ompRay.h"
+#include <omp.h>
 #include <vector>
 
 namespace RT::OMP
 {
-    template<bool EnableIntrinsics = true>
     struct alignas(32) Camera
     {
-        using RayType = Ray<EnableIntrinsics>;
+        using RayType = RT::OMP::Ray;
 
         vec4 Origin;
         vec4 Direction;
@@ -17,13 +18,14 @@ namespace RT::OMP
         float_t HorizontalFOV;
         float_t AspectRatio;
 
-        std::vector<RayType> SpawnPrimaryRays( int horizontal_count, int vertical_count );
+        std::vector<Ray> SpawnPrimaryRays( int horizontal_count, int vertical_count );
     };
 
-    template<>
-    inline std::vector<Camera<true>::RayType> Camera<true>::SpawnPrimaryRays( int horizontal_count, int vertical_count )
+    inline std::vector<Ray> Camera::SpawnPrimaryRays( int horizontal_count, int vertical_count )
     {
-        std::vector<RayType> rays( vertical_count * horizontal_count );
+        std::vector<Ray> rays( vertical_count * horizontal_count );
+
+        #if !RT_DISABLE_INTRINSICS
 
         // Camera properties
         __m128 O, D, U, R;
@@ -92,7 +94,7 @@ namespace RT::OMP
                 RAY_D = _mm_add_ps( VOFFSET, RAY_D );
                 RAY_D = Normalize3( RAY_D );
 
-                RayType* pRay = &rays[y_ind * horizontal_count + x_ind];
+                Ray* pRay = &rays[y_ind * horizontal_count + x_ind];
                 _mm_store_ps( &pRay->Direction.data, RAY_D );
                 _mm_store_ps( &pRay->Origin.data, O );
 
@@ -102,13 +104,10 @@ namespace RT::OMP
             VOFFSET = _mm_sub_ps( VOFFSET, VSTEP );
         }
 
-        return rays;
-    }
+        #else
+        //TODO
+        #endif
 
-    template<>
-    inline std::vector<Camera<false>::RayType> Camera<false>::SpawnPrimaryRays( int horizontal_count, int vertical_count )
-    {
-        // TODO
-        return {};
+        return rays;
     }
 }

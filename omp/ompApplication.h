@@ -1,26 +1,36 @@
 #pragma once
+#include "../Optimizations.h"
 #include "../Application.h"
 #include "../File.h"
+#include "../Tbb.h"
 #include "ompScene.h"
 #include <atomic>
+#include <functional>
 #include <iostream>
+#include <mutex>
 #include <omp.h>
-#include <tbb/concurrent_queue.h>
 
 namespace RT::OMP
 {
-    template<RT::ApplicationIntrinMode IntrinMode>
     class Application : public RT::Application
     {
-        using SceneTypes = RT::OMP::SceneTypes<IntrinMode == RT::ApplicationIntrinMode::eEnabled>;
+        using SceneTypes = RT::OMP::SceneTypes;
         using SceneTraits = RT::MakeSceneTraits<SceneTypes, RT::OMP::SceneFunctions<SceneTypes>>;
 
-        struct RayTriangleIntersection
+        struct Intersection
         {
-            const typename SceneTypes::ObjectType::TriangleType* pTriangle;
-            RT::vec4 Color;
-            float Distance;
-            std::mutex Mutex;
+            float m_Distance;
+            Triangle m_Triangle;
+            vec4 m_Color;
+        };
+
+        struct SecondaryRay
+        {
+            Ray m_Ray;
+            int m_PrimaryRayIndex;
+            int m_PreviousRayIndex;
+            int m_Depth;
+            Intersection m_Intersection;
         };
 
     public:
@@ -54,126 +64,55 @@ namespace RT::OMP
             const int Y = m_CommandLineArguments.appHeight;
 
             const auto primaryRays = m_Scene.Cameras[0].SpawnPrimaryRays( X, Y );
-            const int primaryRayCount = primaryRays.size();
+            const int primaryRayCount = (int)primaryRays.size();
 
-            std::vector<RayTriangleIntersection> intersections( primaryRayCount );
+            m_Rays.resize( primaryRayCount );
 
             struct char3 { png_byte r, g, b; };
             std::vector<char3> pDstImageData( primaryRayCount );
 
+            memset( pDstImageData.data(), 0, pDstImageData.size() * sizeof( char3 ) );
+
+            // Constant in the runtime
+            const int objectCount = (int)m_Scene.Objects.size();
+
             BenchmarkBegin();
 
-#           pragma omp parallel
+            #pragma omp parallel
             {
-                // Spawn tasks
-#               pragma omp master
+                // Spawn primary ray tasks
+                #pragma omp for nowait
+                for( int ray = 0; ray < primaryRayCount; ++ray )
                 {
-                    for( int ray = 0; ray < primaryRayCount; ++ray )
-                    {
-                        intersections[ray].pTriangle = nullptr;
-                        intersections[ray].Distance = std::numeric_limits<RT::float_t>::infinity();
+                    auto& rayData = m_Rays[ray];
+                    rayData.m_Ray = primaryRays[ray];
+                    rayData.m_PrimaryRayIndex = ray;
+                    rayData.m_PreviousRayIndex = -1;
+                    rayData.m_Depth = 0;
+                    rayData.m_Intersection.m_Distance = std::numeric_limits<RT::float_t>::infinity();
 
-                        for( int obj = 0; obj < m_Scene.Objects.size(); ++obj )
-                        {
-                            m_pTasks.push( new IntersectionTask(
-                                this, nullptr,
-                                &primaryRays[ray],
-                                &m_Scene.Objects[obj],
-                                &intersections[ray] ) );
-                        }
-                    }
+                    m_Tasks.push( std::bind( &Application::ObjectIntersection, this, ray ) );
                 }
 
-#               pragma omp barrier
+                // Execute tasks
+                std::function<void()> task;
 
-                SlaveProc();
+                while( m_Tasks.try_pop( task ) )
+                {
+                    task();
+                }
 
-#               pragma omp barrier
+                #pragma omp barrier
 
-#               pragma omp for
+                // Merge results
+                #pragma omp for
                 for( int i = 0; i < primaryRayCount; ++i )
                 {
-                    /*
-                    intersections[i].pTriangle = nullptr;
-                    intersections[i].Distance = std::numeric_limits<RT::float_t>::infinity();
+                    const auto& ray = m_Rays[i];
 
-                    for( const auto& object : m_Scene.Objects )
-                    {
-                        if( m_CommandLineArguments.appDisableBoundingBoxes || primaryRays[i].Intersect( object.BoundingBox ) )
-                        {
-                            for( const auto& triangle : object.Triangles )
-                            {
-                                RT::vec4 intersection = primaryRays[i].Intersect( triangle );
-
-                                if( intersection.w != std::numeric_limits<RT::float_t>::infinity() )
-                                {
-                                    if( intersection.w < intersections[i].Distance )
-                                    {
-                                        intersections[i].pTriangle = &triangle;
-                                        intersections[i].Distance = intersection.w;
-                                        intersections[i].Color = object.Color;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    */
-
-                    if( intersections[i].Distance == std::numeric_limits<RT::float_t>::infinity() )
-                    {
-                        pDstImageData[i].r = 0;
-                        pDstImageData[i].g = 0;
-                        pDstImageData[i].b = 0;
-                    }
-                    else
-                    {
-                        // Ray from intersection to light
-                        float intensity = 1;
-
-                        auto secondaryRays = m_Scene.Lights[0].SpawnSecondaryRays( primaryRays[i], intersections[i].Distance );
-
-                        for( int i = 0; i < secondaryRays.size(); ++i )
-                        {
-                            bool inTheShadows = false;
-
-                            for( const auto& object : m_Scene.Objects )
-                            {
-                                if( m_CommandLineArguments.appDisableBoundingBoxes || secondaryRays[i].Intersect( object.BoundingBox ) )
-                                {
-                                    for( const auto& triangle : object.Triangles )
-                                    {
-                                        RT::vec4 intersection = secondaryRays[i].Intersect( triangle );
-
-                                        if( intersection.w != std::numeric_limits<RT::float_t>::infinity() )
-                                        {
-                                            inTheShadows = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if( inTheShadows )
-                                {
-                                    break;
-                                }
-                            }
-
-                            if( !inTheShadows )
-                            {
-                                intensity += 1;
-                            }
-                            else
-                            {
-                                intensity += 0.2;
-                            }
-                        }
-
-                        intensity /= static_cast<RT::float_t>(m_Scene.Lights[0].Subdivs);
-
-                        pDstImageData[i].r = std::min( 255.0f, intersections[i].Color.x * intensity );
-                        pDstImageData[i].g = std::min( 255.0f, intersections[i].Color.y * intensity );
-                        pDstImageData[i].b = std::min( 255.0f, intersections[i].Color.z * intensity );
-                    }
+                    pDstImageData[i].r = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.x );
+                    pDstImageData[i].g = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.y );
+                    pDstImageData[i].b = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.z );
                 }
             }
 
@@ -196,110 +135,101 @@ namespace RT::OMP
     protected:
         RT::Scene<SceneTraits> m_Scene;
 
-        struct TaskBatch
+        tbb::concurrent_vector<SecondaryRay> m_Rays;
+        tbb::concurrent_queue<std::function<void()>> m_Tasks;
+
+        void ObjectIntersection( int rayIndex )
         {
-            struct Task* pTasks;
-            std::atomic_size_t numTasks;
-            std::atomic_size_t numReady;
-        };
+            auto& primaryRay = m_Rays[rayIndex];
 
-        struct Task
-        {
-            TaskBatch* pBatch;
-            Application* pApplication;
-
-            inline Task(
-                Application* pApplication_ = nullptr, 
-                TaskBatch* pBatch_ = nullptr )
-                : pBatch( pBatch_ )
-                , pApplication( pApplication_ )
-            {
-            }
-
-            virtual void Execute() = 0;
-        };
-
-        struct IntersectionTask : Task
-        {
-            const typename SceneTypes::CameraType::RayType* pRay;
-            const typename SceneTypes::ObjectType* pObject;
-
-            RayTriangleIntersection* pIntersection;
-
-            inline IntersectionTask(
-                Application* pApplication_ = nullptr,
-                TaskBatch* pBatch_ = nullptr,
-                const typename SceneTypes::CameraType::RayType* pRay_ = nullptr,
-                const typename SceneTypes::ObjectType* pObject_ = nullptr,
-                RayTriangleIntersection* pIntersection_ = nullptr )
-                : Task( pApplication_, pBatch_ )
-                , pRay( pRay_ )
-                , pObject( pObject_ )
-                , pIntersection( pIntersection_ )
-            {
-            }
-
-            inline virtual void Execute() override final
+            for( const auto& object : m_Scene.Objects )
             {
                 // Ray-Object intersection, test bounding box and spawn per-triangle intersections
-                if( this->pApplication->m_CommandLineArguments.appDisableBoundingBoxes ||
-                    this->pRay->Intersect( pObject->BoundingBox ) )
+                if( RT_DISABLE_BOUNDING_BOXES || primaryRay.m_Ray.Intersect( object.BoundingBox ) )
                 {
-                    const size_t triangleCount = pObject->Triangles.size();
-
-                    for( uint32_t i = 0; i < triangleCount; ++i )
+                    for( const auto& triangle : object.Triangles )
                     {
                         // Ray-Triangle intersection
-                        RT::vec4 intersection = pRay->Intersect( pObject->Triangles[i] );
+                        RT::vec4 intersection = primaryRay.m_Ray.Intersect( triangle );
 
-                        std::unique_lock<std::mutex> lk( pIntersection->Mutex );
-                        if( intersection.w < pIntersection->Distance )
+                        if( intersection.w < primaryRay.m_Intersection.m_Distance )
                         {
-                            // Update intersection distance and color
-                            pIntersection->Distance = intersection.w;
-                            pIntersection->Color = pObject->Color;
+                            // Update intersection
+                            primaryRay.m_Intersection.m_Triangle = triangle;
+                            primaryRay.m_Intersection.m_Distance = intersection.w;
+                            primaryRay.m_Intersection.m_Color = object.Color;
                         }
                     }
                 }
             }
-        };
 
-        tbb::concurrent_queue<Task*> m_pTasks;
-
-        void MasterProc()
-        {
-
+            // Generate secondary rays
+            if( primaryRay.m_Intersection.m_Distance < std::numeric_limits<RT::float_t>::infinity() )
+            {
+                m_Tasks.push( std::bind( &Application::LightIntersection, this, rayIndex, 0 ) );
+            }
         }
 
-        void SlaveProc()
+        void LightIntersection( int rayIndex, int lightIndex )
         {
-            Task* pTask = nullptr;
+            auto& primaryRay = m_Rays[rayIndex];
+            const auto& light = m_Scene.Lights[lightIndex];
 
-            // Execute until there are no more intersections to test
-            while( m_pTasks.try_pop( pTask ) )
+            float lightIntensity = 1.f;
+
+            const auto secondaryRays = light.SpawnSecondaryRays(
+                primaryRay.m_Ray,
+                primaryRay.m_Intersection.m_Distance );
+
+            for( const auto& secondaryRay : secondaryRays )
             {
-                // Execute
-                pTask->Execute();
+                bool inTheShadows = false;
 
-                // Cleanup
-                if( pTask->pBatch )
+                for( const auto& object : m_Scene.Objects )
                 {
-                    // Update task batch
-                    pTask->pBatch->numReady++;
-
-                    if( pTask->pBatch->numReady == pTask->pBatch->numTasks )
+                    if( RT_DISABLE_BOUNDING_BOXES || secondaryRay.Intersect( object.BoundingBox ) )
                     {
-                        // Destroy the task batch
-                        delete[] pTask->pBatch->pTasks;
-                        delete pTask->pBatch;
+                        // Bounding-box test passed, check each triangle to check if the ray actually intersects the object
+                        // Since we are in light ray pass, only one intersection is enough
+                        for( const auto& triangle : object.Triangles )
+                        {
+                            RT::vec4 intersectionPoint = secondaryRay.Intersect( triangle );
+
+                            if( intersectionPoint.w < std::numeric_limits<RT::float_t>::infinity() )
+                            {
+                                // The light ray hits other object
+                                inTheShadows = true;
+                                break;
+                            }
+                        }
                     }
+
+                    if( inTheShadows )
+                    {
+                        break;
+                    }
+                }
+
+                if( !inTheShadows )
+                {
+                    lightIntensity += 1;
                 }
                 else
                 {
-                    // Task was submitted independently
-                    delete pTask;
+                    lightIntensity += 0.2f;
                 }
             }
+
+            lightIntensity /= light.Subdivs;
+
+            #pragma omp atomic
+            primaryRay.m_Intersection.m_Color.x *= lightIntensity;
+
+            #pragma omp atomic
+            primaryRay.m_Intersection.m_Color.y *= lightIntensity;
+
+            #pragma omp atomic
+            primaryRay.m_Intersection.m_Color.z *= lightIntensity;
         }
     };
 }

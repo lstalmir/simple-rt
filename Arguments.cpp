@@ -235,11 +235,9 @@ const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "test", no_argument, 0, 't' },
     { "opencl", no_argument, 0, 'ocl' },
     { "openmp", no_argument, 0, 'omp' },
-    { "disableintrinsics", no_argument, 0, 'dint' },
     { "width", required_argument, 0, 'w' },
     { "height", required_argument, 0, 'h' },
     { "adjustaspect", optional_argument, 0, 'aa' },
-    { "disableboundingboxes", no_argument, 0, 'dbbs' },
     { 0, 0, 0, 0 } };
 
 /***************************************************************************************\
@@ -257,11 +255,9 @@ RT::CommandLineArguments::CommandLineArguments()
     , appInputFilename()
     , appOutputFilename()
     , appMode( ApplicationMode::eUndefined )
-    , appIntrinMode( ApplicationIntrinMode::eEnabled )
     , appWidth( -1 )
     , appHeight( -1 )
     , appAdjustAspect( -1.0f )
-    , appDisableBoundingBoxes( false )
     , oclDeviceType( OpenCLDeviceType::eUndefined )
 {
 }
@@ -377,14 +373,6 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
                 break;
             }
 
-            // Disable intrinsics
-            case 'dint':
-            {
-                WARN_REDEF( cmdargs.appIntrinMode == ApplicationIntrinMode::eEnabled, "Application intrin mode", err );
-                cmdargs.appIntrinMode = ApplicationIntrinMode::eDisabled;
-                break;
-            }
-
             // Output width
             case 'w':
             {
@@ -407,13 +395,6 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
                 WARN_REDEF( cmdargs.appAdjustAspect == -1.0f, "Aspect ratio", err );
                 cmdargs.appAdjustAspect = 0.0f;
                 ParseOptionalArg( cmdargs.appAdjustAspect );
-                break;
-            }
-
-            // Disable bounding boxes
-            case 'dbbs':
-            {
-                cmdargs.appDisableBoundingBoxes = true;
                 break;
             }
         }

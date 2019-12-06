@@ -15,11 +15,11 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Plane )
 {
-    RT::OMP::Ray<true> ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, -1, 0 );
     
-    RT::OMP::Plane<true> plane;
+    RT::OMP::Plane plane;
     plane.Origin = RT::vec4( 0 );
     plane.Normal = RT::vec4( 0, 1 );
 
@@ -42,11 +42,11 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Plane_Parallel )
 {
-    RT::OMP::Ray<true> ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, 0, 0 );
 
-    RT::OMP::Plane<true> plane;
+    RT::OMP::Plane plane;
     plane.Origin = RT::vec4( 0 );
     plane.Normal = RT::vec4( 0, 1 );
 
@@ -69,11 +69,11 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Plane_Behind )
 {
-    RT::OMP::Ray<true> ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, 0, 0 );
 
-    RT::OMP::Plane<true> plane;
+    RT::OMP::Plane plane;
     plane.Origin = RT::vec4( -1, 0, 0 );
     plane.Normal = RT::vec4( 1, 0, 0 );
 
@@ -96,11 +96,11 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle )
 {
-    RT::OMP::Ray<true> ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, -1, 0 );
 
-    RT::OMP::Triangle<true> tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 1, -2, 2 );
     tri.B = RT::vec4( 1, -2, -2 );
     tri.C = RT::vec4( 1, 2, -2 );
@@ -124,11 +124,11 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle_Parallel )
 {
-    RT::OMP::Ray<true> ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 0, 1, 0 );
 
-    RT::OMP::Triangle<true> tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 1, -2, 2 );
     tri.B = RT::vec4( 1, -2, -2 );
     tri.C = RT::vec4( 1, 2, -2 );
@@ -151,11 +151,11 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle_Miss )
 {
-    RT::OMP::Ray<true> ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( 1, -1, 0 );
 
-    RT::OMP::Triangle<true> tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 100, -2, 2 );
     tri.B = RT::vec4( 100, -2, -2 );
     tri.C = RT::vec4( 100, 2, -2 );
@@ -179,11 +179,11 @@ Description:
 \***************************************************************************************/
 TEST( ompIntersectTests, Intersect_Triangle_Behind )
 {
-    RT::OMP::Ray<true> ray;
+    RT::OMP::Ray ray;
     ray.Origin = RT::vec4( 0, 1, 0 );
     ray.Direction = RT::vec4( -1, 1, 0 );
 
-    RT::OMP::Triangle<true> tri;
+    RT::OMP::Triangle tri;
     tri.A = RT::vec4( 1, -2, 2 );
     tri.B = RT::vec4( 1, -2, -2 );
     tri.C = RT::vec4( 1, 2, -2 );

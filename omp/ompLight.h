@@ -1,28 +1,30 @@
 #pragma once
+#include "../Optimizations.h"
 #include "../Intrin.h"
 #include "../Vec.h"
 #include "ompRay.h"
+#include <omp.h>
 #include <vector>
 
 namespace RT::OMP
 {
-    template<bool EnableIntrinsics = true>
     struct Light
     {
-        using RayType = RT::OMP::Ray<EnableIntrinsics>;
+        using RayType = RT::OMP::Ray;
 
         RT::vec4 Position;
         RT::float_t ShadowBias = 0.04f;
         int Subdivs = 10;
 
-        std::vector<RayType> SpawnSecondaryRays( const RayType& primaryRay, RT::float_t intersectionDistance ) const;
+        std::vector<Ray> SpawnSecondaryRays( const Ray& primaryRay, RT::float_t intersectionDistance ) const;
     };
 
-    template<>
-    inline std::vector<Light<true>::RayType> Light<true>::SpawnSecondaryRays(
-        const Light<true>::RayType& primaryRay, RT::float_t intersectionDistance ) const
+
+    inline std::vector<Ray> Light::SpawnSecondaryRays( const Ray& primaryRay, RT::float_t intersectionDistance ) const
     {
-        std::vector<RayType> secondaryRays( Subdivs );
+        std::vector<Ray> secondaryRays( Subdivs );
+
+        #if !RT_DISABLE_INTRINSICS
 
         // Ray from intersection to light
         __m128 DIST, O, D, LO, BIAS;
@@ -33,10 +35,9 @@ namespace RT::OMP
         D = _mm_load_ps( &primaryRay.Direction.data );
         O = _mm_fmadd_ps( DIST, D, O );
 
-        RayType secondaryRay;
+        Ray secondaryRay;
         _mm_store_ps( &secondaryRay.Origin.data, O );
 
-        // TODO: Unroll?
         for( int i = 0; i < Subdivs; ++i )
         {
             // Simulate light size for soft shadows
@@ -56,14 +57,10 @@ namespace RT::OMP
             secondaryRays[i] = secondaryRay;
         }
 
-        return secondaryRays;
-    }
-
-    template<>
-    inline std::vector<Light<false>::RayType> Light<false>::SpawnSecondaryRays(
-        const Light<false>::RayType& primaryRay, RT::float_t intersectionDistance ) const
-    {
+        #else
         // TODO
-        return {};
+        #endif
+
+        return secondaryRays;
     }
 }

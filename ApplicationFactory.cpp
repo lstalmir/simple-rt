@@ -1,5 +1,4 @@
 #include "ApplicationFactory.h"
-#include "ApplicationOCL.h"
 #include "omp/ompApplication.h"
 #include "ApplicationTest.h"
 
@@ -22,19 +21,12 @@ std::unique_ptr<RT::Application> RT::ApplicationFactory::CreateApplication( cons
     }
     case ApplicationMode::eOpenMP:
     {
-        switch( cmdargs.appIntrinMode )
-        {
-        case ApplicationIntrinMode::eDisabled:
-            return std::make_unique<RT::OMP::Application<ApplicationIntrinMode::eDisabled>>( cmdargs );
-
-        case ApplicationIntrinMode::eEnabled:
-            return std::make_unique<RT::OMP::Application<ApplicationIntrinMode::eEnabled>>( cmdargs );
-        }
+        return std::make_unique<RT::OMP::Application>( cmdargs );
     }
-    case ApplicationMode::eOpenCL:
-    {
-        return std::make_unique<ApplicationOCL>( cmdargs );
-    }
+    //case ApplicationMode::eOpenCL:
+    //{
+    //    return std::make_unique<ApplicationOCL>( cmdargs );
+    //}
     }
     return nullptr;
 }

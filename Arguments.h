@@ -44,11 +44,9 @@ namespace RT
         std::string             appInputFilename;
         std::string             appOutputFilename;
         ApplicationMode         appMode;
-        ApplicationIntrinMode   appIntrinMode;
         int                     appWidth;
         int                     appHeight;
         float                   appAdjustAspect;
-        bool                    appDisableBoundingBoxes;
         OpenCLDeviceType        oclDeviceType;
 
     private:

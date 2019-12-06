@@ -1,4 +1,5 @@
 #pragma once
+#include "../Optimizations.h"
 #include "../Vec.h"
 #include "ompBox.h"
 #include "ompPlane.h"
@@ -6,27 +7,26 @@
 
 namespace RT::OMP
 {
-    template<bool EnableIntrinsics = true>
     struct alignas(32) Ray
     {
         vec4 Origin;
         vec4 Direction;
 
-        vec4 Intersect( const Plane<EnableIntrinsics> & plane ) const;
-        vec4 Intersect( const Triangle<EnableIntrinsics> & triangle ) const;
-        bool Intersect( const Box<EnableIntrinsics> & box ) const;
-        Ray Reflect( const Plane<EnableIntrinsics> & plane, const vec4 & intersectionPoint ) const;
+        vec4 Intersect( const Plane & plane ) const;
+        vec4 Intersect( const Triangle & triangle ) const;
+        bool Intersect( const Box & box ) const;
+        Ray Reflect( const Plane & plane, const vec4 & intersectionPoint ) const;
     };
 
-    template<>
-    inline vec4 Ray<true>::Intersect( const Plane<true> & plane ) const
+    inline vec4 Ray::Intersect( const Plane& plane ) const
     {
         // Use following equation to check if ray intersects the plane
         // (ray.Origin + ray.Direction * T - plane.Origin) DOT plane.Normal = 0, T > 0
-        
-        float denominator, t;
+
+        #if !RT_DISABLE_INTRINSICS
+
+        float denominator;
         __m128 N, D, O, P, T, DENOM, TEST, ZEROS;
-        __m128i xmm3i;
 
         ZEROS = _mm_setzero_ps();
 
@@ -59,21 +59,17 @@ namespace RT::OMP
                 return intersectionFactor;
             }
         }
-        
+
+        #else
+        // TODO
+        #endif
+
         // No intersection
         return vec4( std::numeric_limits<float_t>::infinity() );
     }
 
-    template<>
-    inline vec4 Ray<false>::Intersect( const Plane<false> & plane ) const
-    {
-        // TODO
-        return vec4( std::numeric_limits<float_t>::infinity() );
-    }
 
-
-    template<>
-    inline vec4 Ray<true>::Intersect( const Triangle<true> & triangle ) const
+    inline vec4 Ray::Intersect( const Triangle& triangle ) const
     {
         // M�ller�Trumbore intersection algorithm
         //
@@ -93,8 +89,10 @@ namespace RT::OMP
         //       u < 0 or u > 1 or
         //       v < 0 or v > 1 or
         //       u + v > 1
-        
-        float denominator, u, v, t;
+
+        #if !RT_DISABLE_INTRINSICS
+
+        float denominator;
         __m128 V0, V1, V2, E1, E2, P, Q, T, U, V, TEST, D, O, F, DENOM, DIST, ZEROS, ONES;
 
         // Translate triangle to (0,0,0), compute tri.Edge1 and tri.Edge2
@@ -164,21 +162,19 @@ namespace RT::OMP
             }
         }
 
+        #else
+        // TODO
+        #endif
+
         // No intersection
         return vec4( std::numeric_limits<float_t>::infinity() );
     }
 
-    template<>
-    inline vec4 Ray<false>::Intersect( const Triangle<false> & triangle ) const
-    {
-        // TODO
-        return vec4( std::numeric_limits<float_t>::infinity() );
-    }
 
-
-    template<>
-    inline bool Ray<true>::Intersect( const Box<true> & box ) const
+    inline bool Ray::Intersect( const Box& box ) const
     {
+        #if !RT_DISABLE_INTRINSICS
+
         __m128 TMIN1, TMIN2, TMAX1, TMAX2, O, D, TEST;
 
         // Load ray
@@ -206,27 +202,25 @@ namespace RT::OMP
 
         // Read most significant bit of each component
         return _mm_movemask_ps( TEST ) == 0xF;
-    }
-
-    template<>
-    inline bool Ray<false>::Intersect( const Box<false> & box ) const
-    {
+        
+        #else
         // TODO
         return false;
+        #endif
     }
 
 
-    template<>
-    inline Ray<true> Ray<true>::Reflect( const Plane<true> & plane, const vec4 & intersectionPoint ) const
+    inline Ray Ray::Reflect( const Plane& plane, const vec4& intersectionPoint ) const
     {
         // Use following equation to compute reflection ray
         // (ray.Direction - 2 * (ray.Direction DOT plane.Normal) * plane.Normal
 
         // Assume the ray is in the direction to the plane
-        Ray<true> reflectedRay;
+        Ray reflectedRay;
+
+        #if !RT_DISABLE_INTRINSICS
 
         __m128 xmm0, xmm1, xmm2, xmm3;
-        __m128i xmm3i;
 
         xmm0 = _mm_load_ps( &plane.Normal.data );
         xmm1 = _mm_load_ps( &Direction.data );
@@ -245,17 +239,10 @@ namespace RT::OMP
         _mm_store_ps( &reflectedRay.Origin.data, xmm1 );
         _mm_store_ps( &reflectedRay.Direction.data, xmm0 );
 
+        #else
+        //TODO
+        #endif
+
         return reflectedRay;
-    }
-
-    template<>
-    inline Ray<false> Ray<false>::Reflect( const Plane<false> & plane, const vec4 & intersectionPoint ) const
-    {
-        Ray<false> nullRay;
-        nullRay.Origin = vec4( 0 );
-        nullRay.Direction = vec4( 0 );
-
-        // TODO
-        return nullRay;
     }
 }

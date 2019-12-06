@@ -1,4 +1,5 @@
 #pragma once
+#include "../Optimizations.h"
 #include "../Scene.h"
 #include "ompCamera.h"
 #include "ompLight.h"
@@ -8,15 +9,14 @@
 
 namespace RT::OMP
 {
-    template<bool EnableIntrinsics_ = true>
     struct SceneTypes
     {
-        using CameraType = RT::OMP::Camera<EnableIntrinsics_>;
-        using ObjectType = RT::OMP::Object<EnableIntrinsics_>;
-        using LightType = RT::OMP::Light<EnableIntrinsics_>;
+        using CameraType = RT::OMP::Camera;
+        using ObjectType = RT::OMP::Object;
+        using LightType = RT::OMP::Light;
     };
 
-    template<typename SceneTypes = RT::OMP::SceneTypes<>>
+    template<typename SceneTypes = RT::OMP::SceneTypes>
     class SceneFunctions
     {
     public:
@@ -84,6 +84,9 @@ namespace RT::OMP
                 tri.B = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 1 )] ) );
                 tri.C = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 2 )] ) );
 
+                #if !RT_DISABLE_BOUNDING_BOXES
+                // Update bounding box of the object
+
                 ompObject.BoundingBox.Min.x = std::min( std::min( tri.A.x, tri.B.x ), std::min( tri.C.x, ompObject.BoundingBox.Min.x ) );
                 ompObject.BoundingBox.Max.x = std::max( std::max( tri.A.x, tri.B.x ), std::max( tri.C.x, ompObject.BoundingBox.Max.x ) );
 
@@ -92,6 +95,8 @@ namespace RT::OMP
 
                 ompObject.BoundingBox.Min.z = std::min( std::min( tri.A.z, tri.B.z ), std::min( tri.C.z, ompObject.BoundingBox.Min.z ) );
                 ompObject.BoundingBox.Max.z = std::max( std::max( tri.A.z, tri.B.z ), std::max( tri.C.z, ompObject.BoundingBox.Max.z ) );
+
+                #endif
 
                 ompObject.Triangles.push_back( tri );
             }

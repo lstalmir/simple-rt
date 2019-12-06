@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.13)
 
 project (simple-rt)
 
@@ -13,14 +13,16 @@ set (ZLIB_INCLUDE_DIR ${CMAKE_BINARY_DIR}/third-party/zlib ${CMAKE_SOURCE_DIR}/t
 set (ZLIB_LIBRARY zlib)
 add_subdirectory (third-party/libpng)
 
-set (TBB_DIR ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/cmake)
+set (TBB_VER 2019_20191006oss)
+set (TBB_DIR ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/cmake)
 
 find_package (TBB REQUIRED)
-find_package (OpenCL REQUIRED)
+find_package (CUDA REQUIRED)
 find_package (OpenMP REQUIRED)
 
 # Build with C++17
 set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     set (architecture x64)
@@ -37,8 +39,6 @@ set (base
     "Application.h"
     "ApplicationFactory.cpp"
     "ApplicationFactory.h"
-    "ApplicationOCL.cpp"
-    "ApplicationOCL.h"
     "ApplicationTest.cpp"
     "ApplicationTest.h"
     "Arguments.cpp"
@@ -48,13 +48,11 @@ set (base
     "Intrin.h"
     "Main.cpp"
     "Scene.h"
+    "Tbb.h"
     "Vec.h"
     )
     
 set (ocl
-    "ocl/Kernel.h"
-    "ocl/oclRay.cpp"
-    "ocl/oclRay.h"
     )
 
 set (omp
@@ -80,12 +78,16 @@ set (omptests
 
 add_executable (simple-rt ${base} ${ocl} ${omp} ${omptests})
 
-# Compile with SSE
+# Compile with SSE and optimizations
 if (MSVC)
-    #target_compile_options (simple-rt PUBLIC /arch:SSE3)
+    target_compile_options (simple-rt PUBLIC /GR-)              # Disable RTTI
+    target_compile_options (simple-rt PUBLIC /favor:INTEL64)    # Optimize for Intel-64
 else ()
-    target_compile_options (simple-rt PUBLIC -msse3 -mfma)
+    target_compile_options (simple-rt PUBLIC -msse3)            # Enable SSE3
+    target_compile_options (simple-rt PUBLIC -mfma)             # Enable FMA
+    target_compile_options (simple-rt PUBLIC -fno-rtti)         # Disable RTTI
 endif ()
+
 
 # SSE extension for linux
 if (UNIX)
@@ -102,54 +104,52 @@ target_include_directories (simple-rt
     
 # TBB
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/include
-    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/pstl2019_20191006oss/include)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/pstl${TBB_VER}/include)
 
 if (UNIX)
 
-    link_directories (
-                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8)
+    target_link_directories (
+        simple-rt
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/lib/${tbb_arch}/gcc4.8)
 
-    target_link_libraries (simple-rt
-        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb.so)
-        
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb.so
+                ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/lib/${tbb_arch}/gcc4.8/libtbb.so
                 ${CMAKE_BINARY_DIR}/libtbb.so)
                 
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/gcc4.8/libtbb_debug.so
+                ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/lib/${tbb_arch}/gcc4.8/libtbb_debug.so
                 ${CMAKE_BINARY_DIR}/libtbb_debug.so)
 
 elseif (WIN32)
 
-    link_directories (
-                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/lib/${tbb_arch}/vc14)
-        
+    target_link_directories (
+        simple-rt
+        PRIVATE ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/lib/${tbb_arch}/vc14)
+
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb.dll
+                ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/bin/${tbb_arch}/vc14/tbb.dll
                 ${CMAKE_BINARY_DIR}/tbb.dll)
                 
     add_custom_command (
         TARGET simple-rt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/third-party/tbb2019_20191006oss/bin/${tbb_arch}/vc14/tbb_debug.dll
+                ${CMAKE_SOURCE_DIR}/third-party/tbb${TBB_VER}/bin/${tbb_arch}/vc14/tbb_debug.dll
                 ${CMAKE_BINARY_DIR}/tbb_debug.dll)
 
 endif ()
 
-# OpenCL
+# CUDA
 target_include_directories (simple-rt
-    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/opencl-headers
-    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/opencl-clhpp/include)
+    PRIVATE ${CUDA_INCLUDE_DIRS})
 
-target_link_libraries (simple-rt ${OpenCL_LIBRARY})
+target_link_libraries (simple-rt ${CUDA_LIBRARIES})
 
 # OpenMP
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -182,7 +182,8 @@ elseif (WIN32)
     link_directories (
                 ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/vs2017/${architecture}/release)
 
-    target_link_libraries (simple-rt libfbxsdk.lib)
+    target_link_libraries (simple-rt
+                ${CMAKE_SOURCE_DIR}/third-party/fbxsdk/lib/vs2017/${architecture}/release/libfbxsdk.lib)
 
     add_custom_command (
         TARGET simple-rt POST_BUILD

@@ -84,7 +84,7 @@ namespace RT::OMP
                 tri.B = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 1 )] ) );
                 tri.C = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 2 )] ) );
 
-                #if !RT_DISABLE_BOUNDING_BOXES
+                #if RT_ENABLE_BOUNDING_BOXES
                 // Update bounding box of the object
 
                 ompObject.BoundingBox.Min.x = std::min( std::min( tri.A.x, tri.B.x ), std::min( tri.C.x, ompObject.BoundingBox.Min.x ) );

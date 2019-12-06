@@ -1,5 +1,6 @@
 #pragma once
 #include "Fbx.h"
+#include "Optimizations.h"
 #include <stdexcept>
 #include <vector>
 

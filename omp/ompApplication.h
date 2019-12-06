@@ -8,6 +8,7 @@
 #include <functional>
 #include <iostream>
 #include <mutex>
+#include <stack>
 #include <omp.h>
 
 namespace RT::OMP
@@ -22,6 +23,8 @@ namespace RT::OMP
             float m_Distance;
             Triangle m_Triangle;
             vec4 m_Color;
+            // Synchronize access to this object
+            std::mutex m_Mutex;
         };
 
         struct SecondaryRay
@@ -145,7 +148,7 @@ namespace RT::OMP
             for( const auto& object : m_Scene.Objects )
             {
                 // Ray-Object intersection, test bounding box and spawn per-triangle intersections
-                if( RT_DISABLE_BOUNDING_BOXES || primaryRay.m_Ray.Intersect( object.BoundingBox ) )
+                if( !RT_ENABLE_BOUNDING_BOXES || primaryRay.m_Ray.Intersect( object.BoundingBox ) )
                 {
                     for( const auto& triangle : object.Triangles )
                     {
@@ -166,7 +169,14 @@ namespace RT::OMP
             // Generate secondary rays
             if( primaryRay.m_Intersection.m_Distance < std::numeric_limits<RT::float_t>::infinity() )
             {
+                // Trace shadows for this fragment
                 m_Tasks.push( std::bind( &Application::LightIntersection, this, rayIndex, 0 ) );
+
+                if( primaryRay.m_Depth < RT_MAX_RAY_DEPTH )
+                {
+                    // Generate reflection and refraction rays
+
+                }
             }
         }
 
@@ -175,25 +185,33 @@ namespace RT::OMP
             auto& primaryRay = m_Rays[rayIndex];
             const auto& light = m_Scene.Lights[lightIndex];
 
-            float lightIntensity = 1.f;
+            #if RT_ENABLE_INTRINSICS
+            const __m128 lightLevel = _mm_set1_ps( 1.f );
+            const __m128 shadowLevel = _mm_set1_ps( 0.2f );
+            __m128 lightIntensity = lightLevel;
+            #else
+            const float lightLevel = 1.f;
+            const float shadowLevel = 0.2f;
+            float lightIntensity = lightLevel;
+            #endif
 
-            const auto secondaryRays = light.SpawnSecondaryRays(
+            const auto shadowRays = light.SpawnSecondaryRays(
                 primaryRay.m_Ray,
                 primaryRay.m_Intersection.m_Distance );
 
-            for( const auto& secondaryRay : secondaryRays )
+            for( const auto& shadowRay : shadowRays )
             {
                 bool inTheShadows = false;
 
                 for( const auto& object : m_Scene.Objects )
                 {
-                    if( RT_DISABLE_BOUNDING_BOXES || secondaryRay.Intersect( object.BoundingBox ) )
+                    if( !RT_ENABLE_BOUNDING_BOXES || shadowRay.Intersect( object.BoundingBox ) )
                     {
                         // Bounding-box test passed, check each triangle to check if the ray actually intersects the object
                         // Since we are in light ray pass, only one intersection is enough
                         for( const auto& triangle : object.Triangles )
                         {
-                            RT::vec4 intersectionPoint = secondaryRay.Intersect( triangle );
+                            RT::vec4 intersectionPoint = shadowRay.Intersect( triangle );
 
                             if( intersectionPoint.w < std::numeric_limits<RT::float_t>::infinity() )
                             {
@@ -210,26 +228,51 @@ namespace RT::OMP
                     }
                 }
 
-                if( !inTheShadows )
-                {
-                    lightIntensity += 1;
-                }
-                else
-                {
-                    lightIntensity += 0.2f;
-                }
+                #if RT_ENABLE_INTRINSICS
+                lightIntensity = _mm_add_ps( lightIntensity, !inTheShadows ? lightLevel : shadowLevel );
+                #else
+                lightIntensity += !inTheShadows ? lightLevel : shadowLevel;
+                #endif
             }
 
-            lightIntensity /= light.Subdivs;
+            // Distance to the light
+            #if RT_ENABLE_INTRINSICS
+            {
+                __m128 rayOrigin = _mm_load_ps( &primaryRay.m_Ray.Origin.data );
+                __m128 lightPosition = _mm_load_ps( &light.Position.data );
 
-            #pragma omp atomic
-            primaryRay.m_Intersection.m_Color.x *= lightIntensity;
+                __m128 distance;
+                distance = _mm_sub_ps( lightPosition, rayOrigin );
+                distance = Length3( distance );
+                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.01f ) );
+                distance = _mm_pow_ps( distance, _mm_set1_ps( 4.0f ) );
 
-            #pragma omp atomic
-            primaryRay.m_Intersection.m_Color.y *= lightIntensity;
+                __m128i iLightSubdivs = _mm_set1_epi32( light.Subdivs );
+                __m128 lightSubdivs = _mm_cvtepi32_ps( iLightSubdivs );
 
-            #pragma omp atomic
-            primaryRay.m_Intersection.m_Color.z *= lightIntensity;
+                distance = _mm_mul_ps( distance, lightSubdivs );
+                lightIntensity = _mm_div_ps( lightIntensity, distance );
+
+                __m128 color;
+
+                std::scoped_lock lock( primaryRay.m_Intersection.m_Mutex );
+                color = _mm_load_ps( &primaryRay.m_Intersection.m_Color.data );
+                color = _mm_mul_ps( color, lightIntensity );
+                _mm_store_ps( &primaryRay.m_Intersection.m_Color.data, color );
+            }
+            #else
+            {
+                const float distance = (light.Position - primaryRay.m_Ray.Origin).Length3() / 100.0f;
+                lightIntensity /= light.Subdivs * std::pow( distance, 4 );
+
+                // Synchronize access to the intersection parameters
+                std::scoped_lock lock( primaryRay.m_Intersection.m_Mutex );
+
+                primaryRay.m_Intersection.m_Color.x *= lightIntensity;
+                primaryRay.m_Intersection.m_Color.y *= lightIntensity;
+                primaryRay.m_Intersection.m_Color.z *= lightIntensity;
+            }
+            #endif
         }
     };
 }

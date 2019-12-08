@@ -13,7 +13,7 @@ Description:
 RT::ApplicationTest::ApplicationTest( const RT::CommandLineArguments& cmdargs )
     : Application( cmdargs )
 {
-    testing::InitGoogleTest( 0, static_cast<char**>(nullptr) );
+    testing::InitGoogleTest();
 }
 
 /***************************************************************************************\

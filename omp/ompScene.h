@@ -52,7 +52,7 @@ namespace RT::OMP
         {
             typename SceneTypes::LightType ompLight;
             ompLight.Position = RT::vec4( pLightNode->LclTranslation.Get() );
-            ompLight.Subdivs = 30;
+            ompLight.Subdivs = RT_LIGHT_SUBDIVS;
 
             return ompLight;
         }
@@ -60,9 +60,14 @@ namespace RT::OMP
         inline static typename SceneTypes::ObjectType CreateObjectFromFbx( fbxsdk::FbxNode* pObjectNode )
         {
             fbxsdk::FbxAMatrix meshTransform = GetMeshTransform( pObjectNode );
+            #if RT_ENABLE_BACKFACE_CULL
+            fbxsdk::FbxAMatrix normalTransform = GetNormalTransform( pObjectNode );
+            #endif
 
             // Get mesh
             fbxsdk::FbxMesh* pMesh = pObjectNode->GetMesh();
+
+            volatile const char* pName = pMesh->GetName();
 
             // Get vertex properties
             const int vertexCount = pMesh->GetControlPointsCount();
@@ -84,18 +89,23 @@ namespace RT::OMP
                 tri.B = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 1 )] ) );
                 tri.C = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 2 )] ) );
 
+                #if RT_ENABLE_BACKFACE_CULL
+                // Normal of the triangle is average (normalized sum) of normals of each of its vertices
+                vec4 aNorm = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 0 ) ) );
+                vec4 bNorm = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 1 ) ) );
+                vec4 cNorm = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 2 ) ) );
+                tri.Normal = aNorm + bNorm + cNorm;
+                tri.Normal.Normalize3();
+                #endif
+
                 #if RT_ENABLE_BOUNDING_BOXES
                 // Update bounding box of the object
-
                 ompObject.BoundingBox.Min.x = std::min( std::min( tri.A.x, tri.B.x ), std::min( tri.C.x, ompObject.BoundingBox.Min.x ) );
                 ompObject.BoundingBox.Max.x = std::max( std::max( tri.A.x, tri.B.x ), std::max( tri.C.x, ompObject.BoundingBox.Max.x ) );
-
                 ompObject.BoundingBox.Min.y = std::min( std::min( tri.A.y, tri.B.y ), std::min( tri.C.y, ompObject.BoundingBox.Min.y ) );
                 ompObject.BoundingBox.Max.y = std::max( std::max( tri.A.y, tri.B.y ), std::max( tri.C.y, ompObject.BoundingBox.Max.y ) );
-
                 ompObject.BoundingBox.Min.z = std::min( std::min( tri.A.z, tri.B.z ), std::min( tri.C.z, ompObject.BoundingBox.Min.z ) );
                 ompObject.BoundingBox.Max.z = std::max( std::max( tri.A.z, tri.B.z ), std::max( tri.C.z, ompObject.BoundingBox.Max.z ) );
-
                 #endif
 
                 ompObject.Triangles.push_back( tri );
@@ -129,6 +139,11 @@ namespace RT::OMP
             }
 
             return parentMatrix * pNode->EvaluateLocalTransform() * meshTransform;
+        }
+
+        inline static fbxsdk::FbxAMatrix GetNormalTransform( fbxsdk::FbxNode* pNode )
+        {
+            return fbxsdk::FbxAMatrix( fbxsdk::FbxVector4( 0, 0, 0 ), GetMeshTransform( pNode ).GetR(), fbxsdk::FbxVector4( 1, 1, 1 ) );
         }
 
         template<typename T>

@@ -24,7 +24,7 @@ namespace RT::OMP
     {
         std::vector<Ray> secondaryRays( Subdivs );
 
-        #if !RT_DISABLE_INTRINSICS
+        #if RT_ENABLE_INTRINSICS
 
         // Ray from intersection to light
         __m128 DIST, O, D, LO, BIAS;
@@ -58,7 +58,29 @@ namespace RT::OMP
         }
 
         #else
-        // TODO
+
+        Ray secondaryRay;
+
+        // Ray from intersection to light
+        intersectionDistance = intersectionDistance - ShadowBias;
+        
+        secondaryRay.Origin = intersectionDistance * primaryRay.Direction + primaryRay.Origin;
+
+        for( int i = 0; i < Subdivs; ++i )
+        {
+            // Simulate light size for soft shadows
+            vec4 noise = vec4(
+                static_cast<RT::float_t>(rand()) / RAND_MAX,
+                static_cast<RT::float_t>(rand()) / RAND_MAX,
+                static_cast<RT::float_t>(rand()) / RAND_MAX, 0 );
+
+            secondaryRay.Direction = Position - secondaryRay.Origin + noise;
+            secondaryRay.Direction.Normalize3();
+
+            // TODO: Store directly in the vector
+            secondaryRays[i] = secondaryRay;
+        }
+
         #endif
 
         return secondaryRays;

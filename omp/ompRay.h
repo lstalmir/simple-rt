@@ -23,7 +23,7 @@ namespace RT::OMP
         // Use following equation to check if ray intersects the plane
         // (ray.Origin + ray.Direction * T - plane.Origin) DOT plane.Normal = 0, T > 0
 
-        #if !RT_DISABLE_INTRINSICS
+        #if RT_ENABLE_INTRINSICS
 
         float denominator;
         __m128 N, D, O, P, T, DENOM, TEST, ZEROS;
@@ -61,7 +61,21 @@ namespace RT::OMP
         }
 
         #else
-        // TODO
+
+        const float denominator = plane.Normal.Dot( Direction );
+
+        // TODO: remove branch
+        if( denominator < -1e-6f || denominator > 1e-6f )
+        {
+            const auto P = plane.Origin - Origin;
+            const auto T = P.Dot( plane.Normal ) / denominator;
+
+            if( T >= 0 )
+            {
+                return vec4( T );
+            }
+        }
+
         #endif
 
         // No intersection
@@ -71,7 +85,7 @@ namespace RT::OMP
 
     inline vec4 Ray::Intersect( const Triangle& triangle ) const
     {
-        // M�ller�Trumbore intersection algorithm
+        // Muller-Trumbore intersection algorithm
         //
         // | t |          1          | Q DOT tri.Edge2     |
         // | u | = --------------- * | P DOT T             |
@@ -90,7 +104,7 @@ namespace RT::OMP
         //       v < 0 or v > 1 or
         //       u + v > 1
 
-        #if !RT_DISABLE_INTRINSICS
+        #if RT_ENABLE_INTRINSICS
 
         float denominator;
         __m128 V0, V1, V2, E1, E2, P, Q, T, U, V, TEST, D, O, F, DENOM, DIST, ZEROS, ONES;
@@ -163,7 +177,46 @@ namespace RT::OMP
         }
 
         #else
-        // TODO
+
+        // Compute triangle edges relative to (0,0,0)
+        const auto E1 = triangle.B - triangle.A;
+        const auto E2 = triangle.C - triangle.A;
+
+        // Compute factor denominator
+        const auto P = Direction.Cross( E2 );
+        const float denominator = P.Dot( E1 );
+
+        // First condition of intersection:
+        if( denominator < -1e-6f || denominator > 1e-6f )
+        {
+            // Calculate distance from V0 to ray origin
+            const auto T = Origin - triangle.A;
+
+            // Calculate u parameter and test bounds
+            const auto U = P.Dot( T ) / denominator;
+
+            // Second condition of intersection:
+            if( U >= 0 && U <= 1 )
+            {
+                const auto Q = T.Cross( E1 );
+
+                // Calculate v parameter and test bounds
+                const auto V = Q.Dot( Direction ) / denominator;
+
+                // Third and fourth condition of intersection:
+                if( V >= 0 && (U + V) <= 1 )
+                {
+                    // Calculate t, if t > 0, the ray intersects the triangle
+                    const auto distance = Q.Dot( E2 ) / denominator;
+
+                    if( distance > 0 )
+                    {
+                        return vec4( distance );
+                    }
+                }
+            }
+        }
+
         #endif
 
         // No intersection
@@ -173,7 +226,7 @@ namespace RT::OMP
 
     inline bool Ray::Intersect( const Box& box ) const
     {
-        #if !RT_DISABLE_INTRINSICS
+        #if RT_ENABLE_INTRINSICS
 
         __m128 TMIN1, TMIN2, TMAX1, TMAX2, O, D, TEST;
 
@@ -204,8 +257,42 @@ namespace RT::OMP
         return _mm_movemask_ps( TEST ) == 0xF;
         
         #else
-        // TODO
-        return false;
+
+        float tmin = (box.Min.x - Origin.x) / Direction.x;
+        float tmax = (box.Max.x - Origin.x) / Direction.x;
+
+        if( tmin > tmax ) std::swap( tmin, tmax );
+
+        float tymin = (box.Min.y - Origin.y) / Direction.y;
+        float tymax = (box.Max.y - Origin.y) / Direction.y;
+
+        if( tymin > tymax ) std::swap( tymin, tymax );
+
+        if( (tmin > tymax) || (tymin > tmax) )
+            return false;
+
+        if( tymin > tmin )
+            tmin = tymin;
+
+        if( tymax < tmax )
+            tmax = tymax;
+
+        float tzmin = (box.Min.z - Origin.z) / Direction.z;
+        float tzmax = (box.Max.z - Origin.z) / Direction.z;
+
+        if( tzmin > tzmax ) std::swap( tzmin, tzmax );
+
+        if( (tmin > tzmax) || (tzmin > tmax) )
+            return false;
+
+        if( tzmin > tmin )
+            tmin = tzmin;
+
+        if( tzmax < tmax )
+            tmax = tzmax;
+
+        return true;
+
         #endif
     }
 
@@ -218,7 +305,7 @@ namespace RT::OMP
         // Assume the ray is in the direction to the plane
         Ray reflectedRay;
 
-        #if !RT_DISABLE_INTRINSICS
+        #if RT_ENABLE_INTRINSICS
 
         __m128 xmm0, xmm1, xmm2, xmm3;
 
@@ -240,7 +327,10 @@ namespace RT::OMP
         _mm_store_ps( &reflectedRay.Direction.data, xmm0 );
 
         #else
-        //TODO
+
+        reflectedRay.Direction = Direction - 2 * Direction.Dot( plane.Normal ) * plane.Normal;
+        reflectedRay.Origin = Direction * intersectionPoint + Origin;
+
         #endif
 
         return reflectedRay;

@@ -150,9 +150,14 @@ namespace RT
         {
             if( pNode )
             {
-                if( pNode->GetMesh() )
+                fbxsdk::FbxNodeAttribute* pNodeAttribute = pNode->GetNodeAttribute();
+
+                if( pNodeAttribute )
                 {
-                    pObjectNodes.push_back( pNode );
+                    if( pNodeAttribute->GetAttributeType() == fbxsdk::FbxNodeAttribute::eMesh )
+                    {
+                        pObjectNodes.push_back( pNode );
+                    }
                 }
 
                 const int childCount = pNode->GetChildCount();

@@ -71,10 +71,24 @@ namespace RT
             return vec4( x + r.x, y + r.y, z + r.z, w + r.w );
         }
 
+        // Add values to the vector component-wise
+        inline vec4& operator+=( const vec4& r )
+        {
+            x += r.x; y += r.y; z += r.z; w += r.w;
+            return *this;
+        }
+
         // Subtract two vectors component-wise
         inline vec4 operator-( const vec4& r ) const
         {
             return vec4( x - r.x, y - r.y, z - r.z, w - r.w );
+        }
+
+        // Add values to the vector component-wise
+        inline vec4& operator-=( const vec4& r )
+        {
+            x -= r.x; y -= r.y; z -= r.z; w -= r.w;
+            return *this;
         }
 
         // Negate vector
@@ -89,16 +103,34 @@ namespace RT
             return vec4( x * r.x, y * r.y, z * r.z, w * r.w );
         }
 
+        // Scale the vector
+        inline vec4 operator*( float s ) const
+        {
+            return vec4( x * s, y * s, z * s, w * s );
+        }
+
         // Divide two vectors component-wise
         inline vec4 operator/( const vec4& r ) const
         {
             return vec4( x / r.x, y / r.y, z / r.z, w / r.w );
         }
 
+        // Divide vector by scalar
+        inline vec4 operator/( float s ) const
+        {
+            return vec4( x / s, y / s, z / s, w / s );
+        }
+
         // Compute dot product of two vectors
         inline float Dot( const vec4& r ) const
         {
             return x * r.x + y * r.y + z * r.z + w * r.w;
+        }
+
+        // Compute cross product of two vectors
+        inline vec4 Cross( const vec4& r ) const
+        {
+            return vec4( y * r.z - z * r.y, z * r.x - x * r.z, x * r.y - y * r.x );
         }
 
         // Compute length of the vector taking into account all 4 components
@@ -165,6 +197,11 @@ namespace RT
             w = 0;
         }
     };
+
+    inline vec4 operator*( float s, const vec4& v )
+    {
+        return v * s;
+    }
 
     struct alignas(32) vec4_2
     {

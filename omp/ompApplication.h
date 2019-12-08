@@ -152,6 +152,14 @@ namespace RT::OMP
                 {
                     for( const auto& triangle : object.Triangles )
                     {
+                        #if RT_ENABLE_BACKFACE_CULL
+                        if( primaryRay.m_Ray.Direction.Dot( triangle.Normal ) >= 0 )
+                        {
+                            // Backface culling
+                            continue;
+                        }
+                        #endif
+
                         // Ray-Triangle intersection
                         RT::vec4 intersection = primaryRay.m_Ray.Intersect( triangle );
 
@@ -175,7 +183,12 @@ namespace RT::OMP
                 if( primaryRay.m_Depth < RT_MAX_RAY_DEPTH )
                 {
                     // Generate reflection and refraction rays
-
+                    //SecondaryRay reflectionRay;
+                    //reflectionRay.m_Ray = 
+                    //reflectionRay.m_Depth = primaryRay.m_Depth + 1;
+                    //reflectionRay.m_PrimaryRayIndex = primaryRay.m_PrimaryRayIndex;
+                    //reflectionRay.m_PreviousRayIndex = rayIndex;
+                    //reflectionRay.m_Intersection.m_Distance = std::numeric_limits<RT::float_t>::infinity();
                 }
             }
         }
@@ -211,6 +224,14 @@ namespace RT::OMP
                         // Since we are in light ray pass, only one intersection is enough
                         for( const auto& triangle : object.Triangles )
                         {
+                            #if RT_ENABLE_BACKFACE_CULL
+                            if( shadowRay.Direction.Dot( triangle.Normal ) >= 0 )
+                            {
+                                // Backface culling
+                                continue;
+                            }
+                            #endif
+
                             RT::vec4 intersectionPoint = shadowRay.Intersect( triangle );
 
                             if( intersectionPoint.w < std::numeric_limits<RT::float_t>::infinity() )
@@ -244,8 +265,8 @@ namespace RT::OMP
                 __m128 distance;
                 distance = _mm_sub_ps( lightPosition, rayOrigin );
                 distance = Length3( distance );
-                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.01f ) );
-                distance = _mm_pow_ps( distance, _mm_set1_ps( 4.0f ) );
+                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.001f ) );
+                distance = _mm_pow_ps( distance, _mm_set1_ps( 2.0f ) );
 
                 __m128i iLightSubdivs = _mm_set1_epi32( light.Subdivs );
                 __m128 lightSubdivs = _mm_cvtepi32_ps( iLightSubdivs );

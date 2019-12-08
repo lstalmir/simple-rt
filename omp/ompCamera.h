@@ -25,7 +25,7 @@ namespace RT::OMP
     {
         std::vector<Ray> rays( vertical_count * horizontal_count );
 
-        #if !RT_DISABLE_INTRINSICS
+        #if RT_ENABLE_INTRINSICS
 
         // Camera properties
         __m128 O, D, U, R;
@@ -57,10 +57,7 @@ namespace RT::OMP
         HNUM = _mm_shuffle_ps( NUM, NUM, _MM_SHUFFLE( 0, 0, 0, 0 ) );
         VNUM = _mm_shuffle_ps( NUM, NUM, _MM_SHUFFLE( 1, 1, 1, 1 ) );
 
-        __m128 HOFFSET, VOFFSET, NEG;
-        __m128i NEGi;
-        NEGi = _mm_set1_epi32( 0x80000000 );
-        NEG = _mm_castsi128_ps( NEGi );
+        __m128 HOFFSET, VOFFSET;
         VOFFSET = _mm_mul_ps( VNUM, VSTEP );
 
         if( (vertical_count & 1) == 0 )
@@ -105,7 +102,51 @@ namespace RT::OMP
         }
 
         #else
-        //TODO
+
+        // Camera properties
+        const auto right = Up.Cross( Direction );
+        const auto up = Direction.Cross( right );
+
+        // Compute horizontal and vertical steps
+        const auto vstep = up * std::tanf( HorizontalFOV / vertical_count ) / AspectRatio;
+        const auto hstep = right * std::tanf( HorizontalFOV / horizontal_count );
+
+        // Temporary variables
+        auto voffset = (vertical_count / 2.f) * vstep;
+
+        if( (vertical_count & 1) == 0 )
+        {
+            // Adjust start offset when number of vertical rays is even
+            voffset += 0.5f * vstep;
+        }
+
+        auto hoffset_start = (horizontal_count / 2.f) * hstep;
+
+        if( (horizontal_count & 1) == 0 )
+        {
+            // Adjust start offset when number of horizontal rays is even
+            hoffset_start += 0.5f * hstep;
+        }
+
+        for( int y_ind = 0; y_ind < vertical_count; ++y_ind )
+        {
+            auto hoffset = hoffset_start;
+
+            for( int x_ind = 0; x_ind < horizontal_count; ++x_ind )
+            {
+                auto ray_d = voffset + hoffset + Direction;
+                ray_d.Normalize3();
+
+                Ray* pRay = &rays[y_ind * horizontal_count + x_ind];
+                pRay->Direction = ray_d;
+                pRay->Origin = Origin;
+
+                hoffset -= hstep;
+            }
+
+            voffset -= vstep;
+        }
+
         #endif
 
         return rays;

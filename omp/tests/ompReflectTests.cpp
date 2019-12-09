@@ -23,7 +23,7 @@ TEST( ompReflectTests, Reflect )
     plane.Normal = RT::vec4( 0, 1 );
 
     RT::vec4 intersectionPoint = ray.Intersect( plane );
-    RT::OMP::Ray reflectedRay = ray.Reflect( plane, intersectionPoint );
+    RT::OMP::Ray reflectedRay = ray.Reflect( plane.Normal, intersectionPoint );
 
     EXPECT_NEAR( reflectedRay.Origin.x, intersectionPoint.x * ray.Direction.x + ray.Origin.x, 0.01f );
     EXPECT_NEAR( reflectedRay.Origin.y, intersectionPoint.y * ray.Direction.y + ray.Origin.y, 0.01f );

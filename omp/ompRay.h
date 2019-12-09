@@ -4,6 +4,7 @@
 #include "ompBox.h"
 #include "ompPlane.h"
 #include "ompTriangle.h"
+#include <algorithm>
 
 namespace RT::OMP
 {
@@ -15,7 +16,8 @@ namespace RT::OMP
         vec4 Intersect( const Plane & plane ) const;
         vec4 Intersect( const Triangle & triangle ) const;
         bool Intersect( const Box & box ) const;
-        Ray Reflect( const Plane & plane, const vec4 & intersectionPoint ) const;
+        Ray Reflect( const vec4 & normal, const vec4 & intersectionPoint ) const;
+        float Fresnel( const vec4 & normal, float ior ) const;
     };
 
     inline vec4 Ray::Intersect( const Plane& plane ) const
@@ -297,7 +299,7 @@ namespace RT::OMP
     }
 
 
-    inline Ray Ray::Reflect( const Plane& plane, const vec4& intersectionPoint ) const
+    inline Ray Ray::Reflect( const vec4& normal, const vec4& intersectionPoint ) const
     {
         // Use following equation to compute reflection ray
         // (ray.Direction - 2 * (ray.Direction DOT plane.Normal) * plane.Normal
@@ -309,7 +311,7 @@ namespace RT::OMP
 
         __m128 xmm0, xmm1, xmm2, xmm3;
 
-        xmm0 = _mm_load_ps( &plane.Normal.data );
+        xmm0 = _mm_load_ps( &normal.data );
         xmm1 = _mm_load_ps( &Direction.data );
 
         xmm3 = _mm_set1_ps( 2 );
@@ -334,5 +336,42 @@ namespace RT::OMP
         #endif
 
         return reflectedRay;
+    }
+
+
+    inline float Ray::Fresnel( const vec4& normal, float ior ) const
+    {
+        #if RT_ENABLE_INTRINSICS && 0
+        //TODO
+        #else
+
+        float cosi = std::min( 1.f, std::max( -1.f, Direction.Dot( normal ) ) );
+        float etai = 1;
+        float etat = ior;
+
+        if( cosi > 0 )
+        {
+            std::swap( etai, etat );
+        }
+
+        // Compute sini using Snell's law
+        const float sint = etai / etat * sqrtf( std::max( 0.f, 1 - cosi * cosi ) );
+
+        // Total internal reflection
+        if( sint >= 1 )
+        {
+            return 1;
+        }
+
+        const float cost = sqrtf( std::max( 0.f, 1 - sint * sint ) );
+
+        cosi = fabsf( cosi );
+
+        const float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+        const float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+
+        return (Rs * Rs + Rp * Rp) / 2;
+
+        #endif
     }
 }

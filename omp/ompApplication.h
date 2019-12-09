@@ -18,6 +18,13 @@ namespace RT::OMP
         using SceneTypes = RT::OMP::SceneTypes;
         using SceneTraits = RT::MakeSceneTraits<SceneTypes, RT::OMP::SceneFunctions<SceneTypes>>;
 
+        enum class SecondaryRayType
+        {
+            ePrimary,
+            eReflection,
+            eRefraction
+        };
+
         struct Intersection
         {
             float m_Distance;
@@ -25,6 +32,14 @@ namespace RT::OMP
             vec4 m_Color;
             // Synchronize access to this object
             std::mutex m_Mutex;
+
+            inline Intersection() = default;
+            inline Intersection( const Intersection& intersection )
+                : m_Distance( intersection.m_Distance )
+                , m_Triangle( intersection.m_Triangle )
+                , m_Color( intersection.m_Color )
+            {
+            }
         };
 
         struct SecondaryRay
@@ -34,6 +49,7 @@ namespace RT::OMP
             int m_PreviousRayIndex;
             int m_Depth;
             Intersection m_Intersection;
+            SecondaryRayType m_Type;
         };
 
     public:
@@ -93,6 +109,7 @@ namespace RT::OMP
                     rayData.m_PreviousRayIndex = -1;
                     rayData.m_Depth = 0;
                     rayData.m_Intersection.m_Distance = std::numeric_limits<RT::float_t>::infinity();
+                    rayData.m_Type = SecondaryRayType::ePrimary;
 
                     m_Tasks.push( std::bind( &Application::ObjectIntersection, this, ray ) );
                 }
@@ -112,7 +129,6 @@ namespace RT::OMP
                 for( int i = 0; i < primaryRayCount; ++i )
                 {
                     const auto& ray = m_Rays[i];
-
                     pDstImageData[i].r = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.x );
                     pDstImageData[i].g = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.y );
                     pDstImageData[i].b = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.z );
@@ -153,11 +169,23 @@ namespace RT::OMP
                     for( const auto& triangle : object.Triangles )
                     {
                         #if RT_ENABLE_BACKFACE_CULL
+                        #if RT_ENABLE_INTRINSICS
+                        __m128 D = _mm_load_ps( &primaryRay.m_Ray.Direction.data );
+                        __m128 N = _mm_load_ps( &triangle.Normal.data );
+                        D = Dot( D, N );
+                        D = _mm_cmpge_ps( D, _mm_setzero_ps() );
+                        if( _mm_cvtss_f32( D ) )
+                        {
+                            // Backface culling
+                            continue;
+                        }
+                        #else
                         if( primaryRay.m_Ray.Direction.Dot( triangle.Normal ) >= 0 )
                         {
                             // Backface culling
                             continue;
                         }
+                        #endif
                         #endif
 
                         // Ray-Triangle intersection
@@ -180,16 +208,37 @@ namespace RT::OMP
                 // Trace shadows for this fragment
                 m_Tasks.push( std::bind( &Application::LightIntersection, this, rayIndex, 0 ) );
 
+                #if RT_MAX_RAY_DEPTH > 0
                 if( primaryRay.m_Depth < RT_MAX_RAY_DEPTH )
                 {
                     // Generate reflection and refraction rays
-                    //SecondaryRay reflectionRay;
-                    //reflectionRay.m_Ray = 
-                    //reflectionRay.m_Depth = primaryRay.m_Depth + 1;
-                    //reflectionRay.m_PrimaryRayIndex = primaryRay.m_PrimaryRayIndex;
-                    //reflectionRay.m_PreviousRayIndex = rayIndex;
-                    //reflectionRay.m_Intersection.m_Distance = std::numeric_limits<RT::float_t>::infinity();
+                    SecondaryRay reflectionRay;
+
+                    // Calculate actual intersection point
+                    vec4 intersectionPoint;
+                    #if RT_ENABLE_INTRINSICS
+                    __m128 O = _mm_load_ps( &primaryRay.m_Ray.Origin.data );
+                    __m128 D = _mm_load_ps( &primaryRay.m_Ray.Direction.data );
+                    __m128 F = _mm_set1_ps( primaryRay.m_Intersection.m_Distance );
+                    O = _mm_fmadd_ps( D, F, O );
+                    _mm_store_ps( &intersectionPoint.data, O );
+                    #else
+                    intersectionPoint = primaryRay.m_Ray.Origin + primaryRay.m_Ray.Direction * primaryRay.m_Intersection.m_Distance;
+                    #endif
+
+                    reflectionRay.m_Ray = primaryRay.m_Ray.Reflect( primaryRay.m_Intersection.m_Triangle.Normal, intersectionPoint );
+                    reflectionRay.m_Depth = primaryRay.m_Depth + 1;
+                    reflectionRay.m_PrimaryRayIndex = primaryRay.m_PrimaryRayIndex;
+                    reflectionRay.m_PreviousRayIndex = rayIndex;
+                    reflectionRay.m_Intersection.m_Distance = std::numeric_limits<RT::float_t>::infinity();
+                    reflectionRay.m_Type = SecondaryRayType::eReflection;
+
+                    auto reflectionRayIterator = m_Rays.push_back( reflectionRay );
+                    const int reflectionRayIndex = reflectionRayIterator - m_Rays.begin();
+
+                    m_Tasks.push( std::bind( &Application::ObjectIntersection, this, reflectionRayIndex ) );
                 }
+                #endif
             }
         }
 
@@ -225,11 +274,23 @@ namespace RT::OMP
                         for( const auto& triangle : object.Triangles )
                         {
                             #if RT_ENABLE_BACKFACE_CULL
+                            #if RT_ENABLE_INTRINSICS
+                            __m128 D = _mm_load_ps( &shadowRay.Direction.data );
+                            __m128 N = _mm_load_ps( &triangle.Normal.data );
+                            D = Dot( D, N );
+                            D = _mm_cmpge_ps( D, _mm_setzero_ps() );
+                            if( _mm_cvtss_f32( D ) )
+                            {
+                                // Backface culling
+                                continue;
+                            }
+                            #else
                             if( shadowRay.Direction.Dot( triangle.Normal ) >= 0 )
                             {
                                 // Backface culling
                                 continue;
                             }
+                            #endif
                             #endif
 
                             RT::vec4 intersectionPoint = shadowRay.Intersect( triangle );
@@ -265,7 +326,7 @@ namespace RT::OMP
                 __m128 distance;
                 distance = _mm_sub_ps( lightPosition, rayOrigin );
                 distance = Length3( distance );
-                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.001f ) );
+                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.01f ) );
                 distance = _mm_pow_ps( distance, _mm_set1_ps( 2.0f ) );
 
                 __m128i iLightSubdivs = _mm_set1_epi32( light.Subdivs );
@@ -292,6 +353,40 @@ namespace RT::OMP
                 primaryRay.m_Intersection.m_Color.x *= lightIntensity;
                 primaryRay.m_Intersection.m_Color.y *= lightIntensity;
                 primaryRay.m_Intersection.m_Color.z *= lightIntensity;
+            }
+            #endif
+
+            #if RT_MAX_RAY_DEPTH > 0
+            if( primaryRay.m_Depth == RT_MAX_RAY_DEPTH )
+            {
+                // End of ray path
+                // Iterate over all rays and update colors
+                int previousRayIndex = primaryRay.m_PreviousRayIndex;
+
+                while( previousRayIndex != -1 )
+                {
+                    auto& currentRay = m_Rays[rayIndex];
+                    auto& previousRay = m_Rays[previousRayIndex];
+
+                    switch( currentRay.m_Type )
+                    {
+                    case SecondaryRayType::eReflection:
+                    {
+                        // Compute reflection coefficient
+                        const float kr = previousRay.m_Ray.Fresnel( previousRay.m_Intersection.m_Triangle.Normal, 3.5f );
+
+                        // Update the color
+                        std::scoped_lock lk( previousRay.m_Intersection.m_Mutex );
+                        previousRay.m_Intersection.m_Color =
+                            previousRay.m_Intersection.m_Color.Lerp( currentRay.m_Intersection.m_Color, kr );
+
+                        break;
+                    }
+                    }
+
+                    rayIndex = previousRayIndex;
+                    previousRayIndex = previousRay.m_PreviousRayIndex;
+                }
             }
             #endif
         }

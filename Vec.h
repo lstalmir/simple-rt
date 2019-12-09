@@ -133,6 +133,12 @@ namespace RT
             return vec4( y * r.z - z * r.y, z * r.x - x * r.z, x * r.y - y * r.x );
         }
 
+        inline vec4 Lerp( const vec4& r, float s ) const
+        {
+            const float s_ = 1 - s;
+            return vec4( x * s_ + r.x * s, y * s_ + r.y * s, z * s_ + r.z * s, w * s_ + r.w * s );
+        }
+
         // Compute length of the vector taking into account all 4 components
         inline float Length4() const
         {

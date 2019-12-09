@@ -89,12 +89,17 @@ namespace RT::OMP
                 tri.B = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 1 )] ) );
                 tri.C = vec4( meshTransform.MultT( pElementVertices[pMesh->GetPolygonVertex( poly, 2 )] ) );
 
+                // Per-vertex normals
+                tri.An = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 0 ) ) );
+                tri.An.Normalize3();
+                tri.Bn = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 1 ) ) );
+                tri.Bn.Normalize3();
+                tri.Cn = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 2 ) ) );
+                tri.Cn.Normalize3();
+
                 #if RT_ENABLE_BACKFACE_CULL
                 // Normal of the triangle is average (normalized sum) of normals of each of its vertices
-                vec4 aNorm = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 0 ) ) );
-                vec4 bNorm = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 1 ) ) );
-                vec4 cNorm = vec4( normalTransform.MultT( GetElement( pMesh, pElementNormals, poly, 0, 2 ) ) );
-                tri.Normal = aNorm + bNorm + cNorm;
+                tri.Normal = tri.An + tri.Bn + tri.Cn;
                 tri.Normal.Normalize3();
                 #endif
 

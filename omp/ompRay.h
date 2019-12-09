@@ -87,7 +87,7 @@ namespace RT::OMP
 
     inline vec4 Ray::Intersect( const Triangle& triangle ) const
     {
-        // Muller-Trumbore intersection algorithm
+        // Moller-Trumbore intersection algorithm
         //
         // | t |          1          | Q DOT tri.Edge2     |
         // | u | = --------------- * | P DOT T             |
@@ -169,6 +169,10 @@ namespace RT::OMP
                     TEST = _mm_cmpge_ps( DIST, ZEROS );
                     if( _mm_cvtss_i32( TEST ) )
                     {
+                        DIST = _mm_movelh_ps( DIST, U );
+                        DIST = _mm_shuffle_ps( DIST, DIST, _MM_SHUFFLE( 2, 0, 2, 0 ) );
+                        DIST = _mm_movelh_ps( DIST, V );
+
                         vec4 intersectionFactor;
                         _mm_store_ps( &intersectionFactor.data, DIST );
 
@@ -213,7 +217,7 @@ namespace RT::OMP
 
                     if( distance > 0 )
                     {
-                        return vec4( distance );
+                        return vec4( distance, U, V, V );
                     }
                 }
             }

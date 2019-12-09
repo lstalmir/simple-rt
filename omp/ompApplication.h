@@ -27,7 +27,7 @@ namespace RT::OMP
 
         struct Intersection
         {
-            float m_Distance;
+            vec4 m_Distance;
             Triangle m_Triangle;
             vec4 m_Color;
             // Synchronize access to this object
@@ -108,7 +108,7 @@ namespace RT::OMP
                     rayData.m_PrimaryRayIndex = ray;
                     rayData.m_PreviousRayIndex = -1;
                     rayData.m_Depth = 0;
-                    rayData.m_Intersection.m_Distance = std::numeric_limits<RT::float_t>::infinity();
+                    rayData.m_Intersection.m_Distance = vec4( std::numeric_limits<RT::float_t>::infinity() );
                     rayData.m_Type = SecondaryRayType::ePrimary;
 
                     m_Tasks.push( std::bind( &Application::ObjectIntersection, this, ray ) );
@@ -191,11 +191,11 @@ namespace RT::OMP
                         // Ray-Triangle intersection
                         RT::vec4 intersection = primaryRay.m_Ray.Intersect( triangle );
 
-                        if( intersection.w < primaryRay.m_Intersection.m_Distance )
+                        if( intersection.x < primaryRay.m_Intersection.m_Distance.x )
                         {
                             // Update intersection
                             primaryRay.m_Intersection.m_Triangle = triangle;
-                            primaryRay.m_Intersection.m_Distance = intersection.w;
+                            primaryRay.m_Intersection.m_Distance = intersection;
                             primaryRay.m_Intersection.m_Color = object.Color;
                         }
                     }
@@ -203,7 +203,7 @@ namespace RT::OMP
             }
 
             // Generate secondary rays
-            if( primaryRay.m_Intersection.m_Distance < std::numeric_limits<RT::float_t>::infinity() )
+            if( primaryRay.m_Intersection.m_Distance.x < std::numeric_limits<RT::float_t>::infinity() )
             {
                 // Trace shadows for this fragment
                 m_Tasks.push( std::bind( &Application::LightIntersection, this, rayIndex, 0 ) );
@@ -219,18 +219,40 @@ namespace RT::OMP
                     #if RT_ENABLE_INTRINSICS
                     __m128 O = _mm_load_ps( &primaryRay.m_Ray.Origin.data );
                     __m128 D = _mm_load_ps( &primaryRay.m_Ray.Direction.data );
-                    __m128 F = _mm_set1_ps( primaryRay.m_Intersection.m_Distance );
+                    __m128 F = _mm_set1_ps( primaryRay.m_Intersection.m_Distance.x );
                     O = _mm_fmadd_ps( D, F, O );
                     _mm_store_ps( &intersectionPoint.data, O );
                     #else
                     intersectionPoint = primaryRay.m_Ray.Origin + primaryRay.m_Ray.Direction * primaryRay.m_Intersection.m_Distance;
                     #endif
 
-                    reflectionRay.m_Ray = primaryRay.m_Ray.Reflect( primaryRay.m_Intersection.m_Triangle.Normal, intersectionPoint );
+                    // Calculate normal in the intersection point
+                    vec4 intersectionNormal;
+                    #if RT_ENABLE_INTRINSICS
+                    __m128 ONES = _mm_set1_ps( 1.f );
+                    __m128 I = _mm_load_ps( &primaryRay.m_Intersection.m_Distance.data );
+                    __m128 U = _mm_shuffle_ps( I, I, _MM_SHUFFLE( 1, 1, 1, 1 ) );
+                    __m128 V = _mm_shuffle_ps( I, I, _MM_SHUFFLE( 2, 2, 2, 2 ) );
+                    __m128 N0 = _mm_load_ps( &primaryRay.m_Intersection.m_Triangle.An.data );
+                    __m128 N1 = _mm_load_ps( &primaryRay.m_Intersection.m_Triangle.Bn.data );
+                    __m128 N2 = _mm_load_ps( &primaryRay.m_Intersection.m_Triangle.Cn.data );
+                    N1 = _mm_mul_ps( N1, U );
+                    N2 = _mm_mul_ps( N2, V );
+                    N1 = _mm_add_ps( N1, N2 );
+                    U = _mm_add_ps( U, V );
+                    U = _mm_sub_ps( ONES, U );
+                    __m128 N = _mm_fmadd_ps( N0, U, N1 );
+                    N = Normalize3( N );
+                    _mm_store_ps( &intersectionNormal.data, N );
+                    #else
+                    // TODO
+                    #endif
+
+                    reflectionRay.m_Ray = primaryRay.m_Ray.Reflect( intersectionNormal, intersectionPoint );
                     reflectionRay.m_Depth = primaryRay.m_Depth + 1;
                     reflectionRay.m_PrimaryRayIndex = primaryRay.m_PrimaryRayIndex;
                     reflectionRay.m_PreviousRayIndex = rayIndex;
-                    reflectionRay.m_Intersection.m_Distance = std::numeric_limits<RT::float_t>::infinity();
+                    reflectionRay.m_Intersection.m_Distance.x = std::numeric_limits<RT::float_t>::infinity();
                     reflectionRay.m_Type = SecondaryRayType::eReflection;
 
                     auto reflectionRayIterator = m_Rays.push_back( reflectionRay );
@@ -259,7 +281,7 @@ namespace RT::OMP
 
             const auto shadowRays = light.SpawnSecondaryRays(
                 primaryRay.m_Ray,
-                primaryRay.m_Intersection.m_Distance );
+                primaryRay.m_Intersection.m_Distance.x );
 
             for( const auto& shadowRay : shadowRays )
             {
@@ -326,7 +348,7 @@ namespace RT::OMP
                 __m128 distance;
                 distance = _mm_sub_ps( lightPosition, rayOrigin );
                 distance = Length3( distance );
-                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.01f ) );
+                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.001f ) );
                 distance = _mm_pow_ps( distance, _mm_set1_ps( 2.0f ) );
 
                 __m128i iLightSubdivs = _mm_set1_epi32( light.Subdivs );

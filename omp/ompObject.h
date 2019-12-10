@@ -15,6 +15,7 @@ namespace RT::OMP
         BoxType BoundingBox;
         std::vector<TriangleType> Triangles;
         RT::vec4 Color;
+        float Ior = 0.f;
     };
 
     struct ArrayObject

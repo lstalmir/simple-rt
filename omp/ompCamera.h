@@ -23,7 +23,8 @@ namespace RT::OMP
 
     inline std::vector<Ray> Camera::SpawnPrimaryRays( int horizontal_count, int vertical_count )
     {
-        std::vector<Ray> rays( vertical_count * horizontal_count );
+        std::vector<Ray> rays( vertical_count * horizontal_count *
+            (RT_ENABLE_ANTIALIASING ? 4 : 1) );
 
         #if RT_ENABLE_INTRINSICS
 
@@ -81,6 +82,13 @@ namespace RT::OMP
 
         __m128 RAY_D;
 
+        #if RT_ENABLE_ANTIALIASING
+        // Adjust hstep and vstep
+        __m128 TMP = _mm_set1_ps( 0.25f );
+        const __m128 HSUBSTEP = _mm_mul_ps( HSTEP, TMP );
+        const __m128 VSUBSTEP = _mm_mul_ps( VSTEP, TMP );
+        #endif
+
         for( int y_ind = 0; y_ind < vertical_count; ++y_ind )
         {
             HOFFSET = HOFFSET_START;
@@ -89,11 +97,46 @@ namespace RT::OMP
             {
                 RAY_D = _mm_add_ps( HOFFSET, D );
                 RAY_D = _mm_add_ps( VOFFSET, RAY_D );
+
+                #if RT_ENABLE_ANTIALIASING
+                __m128 SUBRAY_D = _mm_sub_ps( RAY_D, HSUBSTEP );
+                SUBRAY_D = _mm_sub_ps( SUBRAY_D, VSUBSTEP );
+                SUBRAY_D = Normalize3( SUBRAY_D );
+
+                Ray* pRay = &rays[4 * (y_ind * horizontal_count + x_ind)];
+                _mm_store_ps( &pRay->Direction.data, SUBRAY_D );
+                _mm_store_ps( &pRay->Origin.data, O );
+
+                SUBRAY_D = _mm_add_ps( RAY_D, HSUBSTEP );
+                SUBRAY_D = _mm_sub_ps( SUBRAY_D, VSUBSTEP );
+                SUBRAY_D = Normalize3( SUBRAY_D );
+
+                pRay++;
+                _mm_store_ps( &pRay->Direction.data, SUBRAY_D );
+                _mm_store_ps( &pRay->Origin.data, O );
+
+                SUBRAY_D = _mm_sub_ps( RAY_D, HSUBSTEP );
+                SUBRAY_D = _mm_add_ps( SUBRAY_D, VSUBSTEP );
+                SUBRAY_D = Normalize3( SUBRAY_D );
+
+                pRay++;
+                _mm_store_ps( &pRay->Direction.data, SUBRAY_D );
+                _mm_store_ps( &pRay->Origin.data, O );
+
+                SUBRAY_D = _mm_add_ps( RAY_D, HSUBSTEP );
+                SUBRAY_D = _mm_add_ps( SUBRAY_D, VSUBSTEP );
+                SUBRAY_D = Normalize3( SUBRAY_D );
+
+                pRay++;
+                _mm_store_ps( &pRay->Direction.data, SUBRAY_D );
+                _mm_store_ps( &pRay->Origin.data, O );
+                #else
                 RAY_D = Normalize3( RAY_D );
 
                 Ray* pRay = &rays[y_ind * horizontal_count + x_ind];
                 _mm_store_ps( &pRay->Direction.data, RAY_D );
                 _mm_store_ps( &pRay->Origin.data, O );
+                #endif
 
                 HOFFSET = _mm_sub_ps( HOFFSET, HSTEP );
             }

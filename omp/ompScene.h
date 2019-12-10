@@ -53,6 +53,7 @@ namespace RT::OMP
             typename SceneTypes::LightType ompLight;
             ompLight.Position = RT::vec4( pLightNode->LclTranslation.Get() );
             ompLight.Subdivs = RT_LIGHT_SUBDIVS;
+            ompLight.Radius = RT_LIGHT_RADIUS;
 
             return ompLight;
         }
@@ -116,9 +117,18 @@ namespace RT::OMP
                 ompObject.Triangles.push_back( tri );
             }
 
-            ompObject.Color.x = static_cast<RT::float_t>(rand() % 256);
-            ompObject.Color.y = static_cast<RT::float_t>(rand() % 256);
-            ompObject.Color.z = static_cast<RT::float_t>(rand() % 256);
+            if( auto* pMaterial = (fbxsdk::FbxSurfacePhong*)pObjectNode->GetMaterial( 0 ) )
+            {
+                ompObject.Color = vec4( pMaterial->Diffuse.Get() ) * 255.f;
+                ompObject.Ior = static_cast<RT::float_t>(pMaterial->Specular.Get()[0] * 10.f);
+            }
+            else
+            {
+                ompObject.Color.x = static_cast<RT::float_t>(rand() % 256);
+                ompObject.Color.y = static_cast<RT::float_t>(rand() % 256);
+                ompObject.Color.z = static_cast<RT::float_t>(rand() % 256);
+                ompObject.Ior = 3.5f;
+            }
 
             return ompObject;
         }

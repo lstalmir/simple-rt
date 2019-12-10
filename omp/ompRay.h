@@ -345,8 +345,53 @@ namespace RT::OMP
 
     inline float Ray::Fresnel( const vec4& normal, float ior ) const
     {
+        if( ior == 0 )
+        {
+            return 0;
+        }
+
         #if RT_ENABLE_INTRINSICS && 0
-        //TODO
+
+        __m128 N, D, IOR, COSI, ETAI, ETAT, TEST;
+
+        const __m128 ONES = _mm_set1_ps( 1.f );
+        const __m128 ZEROS = _mm_setzero_ps();
+
+        N = _mm_load_ps( &normal.data );
+        D = _mm_load_ps( &Direction.data );
+        COSI = Dot( D, N );
+        COSI = _mm_max_ps( _mm_set1_ps( -1.f ), COSI );
+        COSI = _mm_min_ps( ONES, COSI );
+
+        ETAI = ONES;
+        ETAT = _mm_set1_ps( ior );
+
+        TEST = _mm_cmpgt_ps( COSI, ZEROS );
+        if( _mm_cvtss_i32( TEST ) )
+        {
+            __m128 TMP = ETAI;
+            ETAI = ETAT;
+            ETAT = TMP;
+        }
+
+        // Compute sini using Snell's law
+        __m128 SINT, COSI2;
+
+        COSI2 = _mm_mul_ps( COSI, COSI );
+        COSI2 = _mm_sub_ps( ONES, COSI2 );
+        COSI2 = _mm_max_ps( ZEROS, COSI2 );
+        COSI2 = _mm_sqrt_ps( COSI2 );
+        SINT = _mm_div_ps( ETAI, ETAT );
+        SINT = _mm_mul_ps( SINT, COSI2 );
+
+        TEST = _mm_cmpge_ps( SINT, ONES );
+        if( _mm_cvtss_i32( TEST ) )
+        {
+            return 1;
+        }
+
+
+
         #else
 
         float cosi = std::min( 1.f, std::max( -1.f, Direction.Dot( normal ) ) );

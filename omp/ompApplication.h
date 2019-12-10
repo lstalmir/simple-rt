@@ -30,6 +30,7 @@ namespace RT::OMP
             vec4 m_Distance;
             Triangle m_Triangle;
             vec4 m_Color;
+            float m_Ior;
             // Synchronize access to this object
             std::mutex m_Mutex;
 
@@ -87,8 +88,14 @@ namespace RT::OMP
 
             m_Rays.resize( primaryRayCount );
 
+            #if RT_ENABLE_ANTIALIASING
+            const int imageDataSize = primaryRayCount / 4;
+            #else
+            const int imageDataSize = primaryRayCount;
+            #endif
+
             struct char3 { png_byte r, g, b; };
-            std::vector<char3> pDstImageData( primaryRayCount );
+            std::vector<char3> pDstImageData( imageDataSize );
 
             memset( pDstImageData.data(), 0, pDstImageData.size() * sizeof( char3 ) );
 
@@ -125,6 +132,37 @@ namespace RT::OMP
                 #pragma omp barrier
 
                 // Merge results
+                #if RT_ENABLE_ANTIALIASING
+                #pragma omp for
+                for( int i = 0; i < imageDataSize; ++i )
+                {
+                    const int firstRayIndex = i * 4;
+
+                    const auto& rayA = m_Rays[firstRayIndex];
+                    const auto& rayB = m_Rays[firstRayIndex + 1];
+                    const auto& rayC = m_Rays[firstRayIndex + 2];
+                    const auto& rayD = m_Rays[firstRayIndex + 3];
+
+                    vec4 avg;
+                    #if RT_ENABLE_INTRINSICS
+                    __m128 color = _mm_load_ps( &rayA.m_Intersection.m_Color.data );
+                    color = _mm_add_ps( color, _mm_load_ps( &rayB.m_Intersection.m_Color.data ) );
+                    color = _mm_add_ps( color, _mm_load_ps( &rayC.m_Intersection.m_Color.data ) );
+                    color = _mm_add_ps( color, _mm_load_ps( &rayD.m_Intersection.m_Color.data ) );
+                    color = _mm_mul_ps( color, _mm_set1_ps( 0.25f ) );
+                    _mm_store_ps( &avg.data, color );
+                    #else
+                    avg = (rayA.m_Intersection.m_Color
+                        + rayB.m_Intersection.m_Color
+                        + rayC.m_Intersection.m_Color
+                        + rayD.m_Intersection.m_Color) / 4.f;
+                    #endif
+
+                    pDstImageData[i].r = (png_byte)std::min( 255.0f, avg.x );
+                    pDstImageData[i].g = (png_byte)std::min( 255.0f, avg.y );
+                    pDstImageData[i].b = (png_byte)std::min( 255.0f, avg.z );
+                }
+                #else
                 #pragma omp for
                 for( int i = 0; i < primaryRayCount; ++i )
                 {
@@ -133,6 +171,7 @@ namespace RT::OMP
                     pDstImageData[i].g = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.y );
                     pDstImageData[i].b = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.z );
                 }
+                #endif
             }
 
             BenchmarkEnd();
@@ -197,6 +236,7 @@ namespace RT::OMP
                             primaryRay.m_Intersection.m_Triangle = triangle;
                             primaryRay.m_Intersection.m_Distance = intersection;
                             primaryRay.m_Intersection.m_Color = object.Color;
+                            primaryRay.m_Intersection.m_Ior = object.Ior;
                         }
                     }
                 }
@@ -348,7 +388,7 @@ namespace RT::OMP
                 __m128 distance;
                 distance = _mm_sub_ps( lightPosition, rayOrigin );
                 distance = Length3( distance );
-                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.001f ) );
+                distance = _mm_mul_ps( distance, _mm_set1_ps( 0.01f ) );
                 distance = _mm_pow_ps( distance, _mm_set1_ps( 2.0f ) );
 
                 __m128i iLightSubdivs = _mm_set1_epi32( light.Subdivs );

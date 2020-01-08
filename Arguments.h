@@ -11,21 +11,13 @@ namespace RT
         eUndefined,
         eTest,
         eOpenMP,
-        eOpenCL
+        eCUDA
     };
 
     enum class ApplicationIntrinMode
     {
         eDisabled,
         eEnabled
-    };
-
-    enum class OpenCLDeviceType
-    {
-        eUndefined,
-        eCPU,
-        eGPU,
-        eAccelerator
     };
 
     class CommandLineArguments
@@ -47,7 +39,6 @@ namespace RT
         int                     appWidth;
         int                     appHeight;
         float                   appAdjustAspect;
-        OpenCLDeviceType        oclDeviceType;
 
     private:
         static const char s_pShortOptions[];

@@ -1,5 +1,6 @@
 #include "ApplicationFactory.h"
 #include "omp/ompApplication.h"
+#include "cuda/cudaApplication.h"
 #include "ApplicationTest.h"
 
 /***************************************************************************************\
@@ -23,10 +24,10 @@ std::unique_ptr<RT::Application> RT::ApplicationFactory::CreateApplication( cons
     {
         return std::make_unique<RT::OMP::Application>( cmdargs );
     }
-    //case ApplicationMode::eOpenCL:
-    //{
-    //    return std::make_unique<ApplicationOCL>( cmdargs );
-    //}
+    case ApplicationMode::eCUDA:
+    {
+        return std::make_unique<RT::CUDA::Application>( cmdargs );
+    }
     }
     return nullptr;
 }

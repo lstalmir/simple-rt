@@ -233,7 +233,7 @@ const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "input", required_argument, 0, 'i' },
     { "output", required_argument, 0, 'o' },
     { "test", no_argument, 0, 't' },
-    { "opencl", no_argument, 0, 'ocl' },
+    { "cuda", no_argument, 0, 'cuda' },
     { "openmp", no_argument, 0, 'omp' },
     { "width", required_argument, 0, 'w' },
     { "height", required_argument, 0, 'h' },
@@ -258,7 +258,6 @@ RT::CommandLineArguments::CommandLineArguments()
     , appWidth( -1 )
     , appHeight( -1 )
     , appAdjustAspect( -1.0f )
-    , oclDeviceType( OpenCLDeviceType::eUndefined )
 {
 }
 
@@ -358,10 +357,10 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
             }
 
             // OpenCL
-            case 'ocl':
+            case 'cuda':
             {
                 WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
-                cmdargs.appMode = ApplicationMode::eOpenCL;
+                cmdargs.appMode = ApplicationMode::eCUDA;
                 break;
             }
 

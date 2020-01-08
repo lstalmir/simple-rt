@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.13)
 
-project (simple-rt)
+project (simple-rt CXX CUDA)
 
 set (gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory (third-party/gtest)
@@ -52,7 +52,20 @@ set (base
     "Vec.h"
     )
     
-set (ocl
+set (cuda
+    "cuda/cudaApplication.h"
+    "cuda/cudaCamera.h"
+    "cuda/cudaCommon.h"
+    "cuda/cudaMemory.h"
+    "cuda/cudaObject.h"
+    "cuda/cudaRay.h"
+    "cuda/cudaScene.h"
+    "cuda/cudaTriangle.h"
+    )
+
+set (cuda_kernels
+    "cuda/cudaCamera.cu"
+    "cuda/cudaLight.cu"
     )
 
 set (omp
@@ -76,7 +89,7 @@ set (omptests
     "omp/tests/ompVectorTests.cpp"
     )
 
-add_executable (simple-rt ${base} ${ocl} ${omp} ${omptests})
+add_executable (simple-rt ${base} ${cuda} ${cuda_kernels} ${omp} ${omptests})
 
 # Compile with SSE and optimizations
 if (MSVC)

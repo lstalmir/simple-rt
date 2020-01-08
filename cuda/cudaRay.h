@@ -3,15 +3,18 @@
 #include "../Vec.h"
 #include "cudaCommon.h"
 
-NAMESPACE_RT_CUDA
+namespace RT
 {
-    struct RayData
+    namespace CUDA
     {
-        vec4 Origin;
-        vec4 Direction;
-    };
+        struct RayData
+        {
+            vec4 Origin;
+            vec4 Direction;
+        };
 
-    struct Ray : DataWrapper<RayData>
-    {
-    };
-}}
+        struct Ray : DataWrapper<RayData>
+        {
+        };
+    }
+}

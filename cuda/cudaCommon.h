@@ -1,71 +1,83 @@
 #pragma once
+#include <algorithm>
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <system_error>
 
-// WA for C++11 nvcc
-#define NAMESPACE_RT_CUDA   namespace RT { namespace CUDA
+#ifdef __INTELLISENSE__
 
-#define DISPATCH( PARAMS )  <<<(PARAMS).NumThreadsPerGroup,(PARAMS).NumGroupsPerBlock,(PARAMS).SharedMemorySize>>>
+// Functions available to nvcc implicitly
+#include <math_functions.h>
 
-NAMESPACE_RT_CUDA
+// Helper declarations
+dim3 blockDim;
+uint3 blockIdx;
+uint3 threadIdx;
+
+#endif // __INTELLISENSE__
+
+namespace RT
 {
-    class CudaError : public std::system_error
+    namespace CUDA
     {
-    public:
-        inline CudaError( cudaError_t error )
-            : std::system_error( error, CudaErrorCategory() )
+        class CudaError : public std::system_error
         {
-        }
-
-        inline static void ThrowIfFailed( cudaError_t error )
-        {
-            // Throw CudaError if value is error
-            if( error != cudaError::cudaSuccess )
+        public:
+            inline CudaError( cudaError_t error )
+                : std::system_error( error, CudaErrorCategory() )
             {
-                throw CudaError( error );
             }
-        }
 
-        inline static void Assert( cudaError_t error )
-        {
-            assert( error == cudaError::cudaSuccess );
-        }
-
-    private:
-        inline static const std::error_category& CudaErrorCategory()
-        {
-            // Anonymous error_category class for cudaError_t
-            static const class : public std::error_category
+            inline static void ThrowIfFailed( cudaError_t error )
             {
-            public:
-                const char* name() const noexcept override
+                // Throw CudaError if value is error
+                if( error != cudaError::cudaSuccess )
                 {
-                    return "cudaError_t";
+                    throw CudaError( error );
                 }
+            }
 
-                std::string message( int error ) const override
+            inline static void Assert( cudaError_t error )
+            {
+                assert( error == cudaError::cudaSuccess );
+            }
+
+        private:
+            inline static const std::error_category& CudaErrorCategory()
+            {
+                // Anonymous error_category class for cudaError_t
+                static const class : public std::error_category
                 {
-                    return cudaGetErrorString( static_cast<cudaError_t>(error) );
-                }
+                public:
+                    const char* name() const noexcept override
+                    {
+                        return "cudaError_t";
+                    }
 
-            } cudaErrorCategory;
+                    std::string message( int error ) const override
+                    {
+                        return cudaGetErrorString( static_cast<cudaError_t>(error) );
+                    }
 
-            return cudaErrorCategory;
-        }
-    };
+                } cudaErrorCategory;
 
-    struct DispatchParameters
-    {
-        unsigned int NumThreadsPerGroup;
-        unsigned int NumGroupsPerBlock;
-        unsigned int SharedMemorySize;
+                return cudaErrorCategory;
+            }
+        };
 
-        inline DispatchParameters( unsigned int numInvocationsRequired,
-            unsigned int maxThreadsPerGroup = 32 )
+        struct DispatchParameters
         {
-            NumThreadsPerGroup = std::min( numInvocationsRequired, maxThreadsPerGroup );
-            NumGroupsPerBlock = ((numInvocationsRequired - 1) / NumThreadsPerGroup) + 1;
-        }
-    };
-}}
+            unsigned int NumThreadsPerBlock;
+            unsigned int NumBlocksPerGrid;
+            unsigned int SharedMemorySize;
+
+            inline DispatchParameters( unsigned int numInvocationsRequired,
+                unsigned int maxThreadsPerBlock = 32 )
+            {
+                NumThreadsPerBlock = std::min( numInvocationsRequired, maxThreadsPerBlock );
+                NumBlocksPerGrid = ((numInvocationsRequired - 1) / NumThreadsPerBlock) + 1;
+                SharedMemorySize = 0;
+            }
+        };
+    }
+}

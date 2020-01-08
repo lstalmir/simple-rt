@@ -24,6 +24,10 @@ find_package (OpenMP REQUIRED)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set (CMAKE_CUDA_STANDARD 17)
+set (CMAKE_CUDA_STANDARD_REQUIRED ON)
+set (CMAKE_CUDA_SEPARABLE_COMPILATION ON)
+
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     set (architecture x64)
     set (bits 64)
@@ -55,7 +59,10 @@ set (base
 set (cuda
     "cuda/cudaApplication.h"
     "cuda/cudaCamera.h"
+    "cuda/cudaCamera.cu"
     "cuda/cudaCommon.h"
+    "cuda/cudaLight.h"
+    "cuda/cudaLight.cu"
     "cuda/cudaMemory.h"
     "cuda/cudaObject.h"
     "cuda/cudaRay.h"
@@ -63,11 +70,12 @@ set (cuda
     "cuda/cudaTriangle.h"
     )
 
-set (cuda_kernels
-    "cuda/cudaCamera.cu"
-    "cuda/cudaLight.cu"
+set (cudatests
+    "cuda/tests/cudaArrayTests.cu"
+    "cuda/tests/cudaCameraTests.cpp"
+    "cuda/tests/cudaDispatchTests.cu"
     )
-
+    
 set (omp
     "omp/ompApplication.h"
     "omp/ompBox.h"
@@ -89,16 +97,15 @@ set (omptests
     "omp/tests/ompVectorTests.cpp"
     )
 
-add_executable (simple-rt ${base} ${cuda} ${cuda_kernels} ${omp} ${omptests})
+add_executable (simple-rt ${base}
+    ${cuda} ${cudatests}
+    ${omp} ${omptests})
 
 # Compile with SSE and optimizations
 if (MSVC)
-    target_compile_options (simple-rt PUBLIC /GR-)              # Disable RTTI
-    target_compile_options (simple-rt PUBLIC /favor:INTEL64)    # Optimize for Intel-64
 else ()
     target_compile_options (simple-rt PUBLIC -msse3)            # Enable SSE3
     target_compile_options (simple-rt PUBLIC -mfma)             # Enable FMA
-    target_compile_options (simple-rt PUBLIC -fno-rtti)         # Disable RTTI
 endif ()
 
 

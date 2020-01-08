@@ -4,17 +4,20 @@
 #include "cudaCommon.h"
 #include <limits>
 
-NAMESPACE_RT_CUDA
+namespace RT
 {
-    struct Box
+    namespace CUDA
     {
-        vec4 Min;
-        vec4 Max;
-
-        inline Box()
+        struct Box
         {
-            Min = vec4( std::numeric_limits<float_t>::infinity() );
-            Max = vec4( -std::numeric_limits<float_t>::infinity() );
-        }
-    };
-}}
+            vec4 Min;
+            vec4 Max;
+
+            inline Box()
+            {
+                Min = vec4( std::numeric_limits<float_t>::infinity() );
+                Max = vec4( -std::numeric_limits<float_t>::infinity() );
+            }
+        };
+    }
+}

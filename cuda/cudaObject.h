@@ -6,22 +6,25 @@
 #include "cudaMemory.h"
 #include "cudaTriangle.h"
 
-NAMESPACE_RT_CUDA
+namespace RT
 {
-    struct ObjectData
+    namespace CUDA
     {
-        Box BoundingBox;
-        vec4 Color;
-        float Ior = 0.f;
-    };
+        struct ObjectData
+        {
+            Box BoundingBox;
+            vec4 Color;
+            float Ior = 0.f;
+        };
 
-    struct Object : DataWrapper<ObjectData>
-    {
-        using BoxType = RT::CUDA::Box;
-        using TriangleType = RT::CUDA::Triangle;
+        struct Object : DataWrapper<ObjectData>
+        {
+            using BoxType = RT::CUDA::Box;
+            using TriangleType = RT::CUDA::Triangle;
 
-        Array<TriangleType> DeviceTriangles;
-        int FirstTriangle;
-        int NumTriangles;
-    };
-}}
+            Array<TriangleType> DeviceTriangles;
+            int FirstTriangle;
+            int NumTriangles;
+        };
+    }
+}

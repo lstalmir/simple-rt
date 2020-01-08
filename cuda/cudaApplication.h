@@ -4,26 +4,29 @@
 #include "../File.h"
 #include "cudaScene.h"
 
-namespace RT::CUDA
+namespace RT
 {
-    class Application : public RT::Application
+    namespace CUDA
     {
-        using SceneTypes = RT::CUDA::SceneTypes;
-        using SceneTraits = RT::MakeSceneTraits<SceneTypes, RT::CUDA::SceneFunctions<SceneTypes>>;
-
-    public:
-        Application( const RT::CommandLineArguments& cmdargs )
-            : RT::Application( cmdargs )
+        class Application : public RT::Application
         {
-        }
+            using SceneTypes = RT::CUDA::SceneTypes;
+            using SceneTraits = RT::MakeSceneTraits<SceneTypes, RT::CUDA::SceneFunctions<SceneTypes>>;
 
-        inline virtual int Run() override
-        {
-            return -1;
-        }
+        public:
+            Application( const RT::CommandLineArguments& cmdargs )
+                : RT::Application( cmdargs )
+            {
+            }
 
-    protected:
-        RT::Scene<SceneTraits> m_Scene;
+            inline virtual int Run() override
+            {
+                return -1;
+            }
 
-    };
+        protected:
+            RT::Scene<SceneTraits> m_Scene;
+
+        };
+    }
 }

@@ -12,9 +12,10 @@ namespace RT
         {
             // Get global invocation index
             const int threadId = blockIdx.x * blockDim.x + threadIdx.x;
+            const int numPrevRays = threadId * NumRaysPerThread;
 
-            int y_ind = threadId / hCount;
-            int x_ind = threadId % hCount;
+            int y_ind = numPrevRays / hCount;
+            int x_ind = numPrevRays % hCount;
             int r_ind = y_ind * hCount + x_ind;
 
             const int numRaysToSpawn = min( (vCount * hCount) - r_ind, NumRaysPerThread );
@@ -37,7 +38,7 @@ namespace RT
             const auto hstep = right * tanf( pCamera->HorizontalFOV / hCount );
 
             // Temporary variables
-            auto voffset = vstep * ((vCount / 2.f) - y_ind);
+            auto voffset = vstep * ((vCount / 2) - y_ind);
 
             if( (vCount & 1) == 0 )
             {
@@ -45,7 +46,7 @@ namespace RT
                 voffset += vstep * 0.5f;
             }
 
-            auto hoffset_start = hstep * (hCount / 2.f);
+            auto hoffset_start = hstep * (hCount / 2);
 
             if( (hCount & 1) == 0 )
             {
@@ -54,6 +55,8 @@ namespace RT
             }
 
             auto hoffset = hoffset_start - (hstep * x_ind);
+
+            RayData threadRays[NumRaysPerThread];
 
             for( int ind = 0; ind < numRaysToSpawn; ++ind )
             {
@@ -72,13 +75,20 @@ namespace RT
                 ray.Direction = ray_d;
                 ray.Origin = cameraOrigin;
 
-                // Store ray in the output array
-                pRays[r_ind] = ray;
+                // Store ray in the local array
+                threadRays[ind] = ray;
 
                 hoffset -= hstep;
                 x_ind++;
-                r_ind++;
             }
+
+            // Copy to global memory
+            memcpy( pRays + r_ind, threadRays, sizeof( RayData ) * numRaysToSpawn );
+        }
+
+        Camera::Camera( const Array<CameraData>& array, int index )
+            : DataWrapper( array, index )
+        {
         }
 
         Array<Camera::RayType::DataType> Camera::SpawnPrimaryRays( int hCount, int vCount )

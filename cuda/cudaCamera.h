@@ -21,6 +21,9 @@ namespace RT
         {
             using RayType = RT::CUDA::Ray;
 
+            Camera() = default;
+            Camera( const Array<CameraData>& array, int index );
+
             Array<RayType::DataType> SpawnPrimaryRays( int hCount, int vCount );
         };
     }

@@ -1,6 +1,7 @@
 #pragma once
 #include "cudaCommon.h"
 #include <memory>
+#include <vector>
 
 namespace RT
 {
@@ -114,6 +115,18 @@ namespace RT
                     cudaMemcpyKind::cudaMemcpyHostToDevice ) );
             }
 
+            inline virtual void UpdateDeviceMemory( const T* source, size_t offset, size_t elements )
+            {
+                const void* pSourceMemory = reinterpret_cast<const void*>(source);
+
+                void* pDestMemory = reinterpret_cast<char*>(m_pDeviceMemory.get())
+                    + sizeof( T ) * offset;
+
+                CudaError::ThrowIfFailed
+                ( cudaMemcpy( pDestMemory, pSourceMemory, sizeof( T ) * elements,
+                    cudaMemcpyKind::cudaMemcpyHostToDevice ) );
+            }
+
             inline virtual void GetDeviceMemory( T* dest ) override
             {
                 // Get all elements
@@ -154,6 +167,15 @@ namespace RT
                 return reinterpret_cast<const T*>(m_pDeviceMemory.get()) + firstElement;
             }
 
+            inline virtual std::vector<T> GetDeviceMemory()
+            {
+                std::vector<T> data( m_Size );
+
+                GetDeviceMemory( data.data(), m_Size );
+
+                return data;
+            }
+
         protected:
             size_t m_Size;
         };
@@ -170,6 +192,11 @@ namespace RT
                 : DeviceMemory( array )
                 , Index( index )
             {
+            }
+
+            inline virtual void UpdateDeviceMemory( const T* source )
+            {
+                DeviceMemory.UpdateDeviceMemory( source, Index, 1 );
             }
 
             inline virtual T* Data()
@@ -194,6 +221,18 @@ namespace RT
 
             ArrayView<DataType> DeviceMemory;
             DataType HostMemory;
+
+            DataWrapper() = default;
+
+            inline DataWrapper( const Array<DataType>& array, int index )
+                : DeviceMemory( array, index )
+            {
+            }
+
+            inline void UpdateDeviceMemory()
+            {
+                DeviceMemory.UpdateDeviceMemory( &HostMemory );
+            }
         };
     }
 }

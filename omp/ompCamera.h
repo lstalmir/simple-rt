@@ -155,20 +155,20 @@ namespace RT::OMP
         const auto hstep = right * std::tanf( HorizontalFOV / horizontal_count );
 
         // Temporary variables
-        auto voffset = (vertical_count / 2.f) * vstep;
+        auto voffset = vstep * (vertical_count / 2);
 
         if( (vertical_count & 1) == 0 )
         {
             // Adjust start offset when number of vertical rays is even
-            voffset += 0.5f * vstep;
+            voffset += vstep * 0.5f;
         }
 
-        auto hoffset_start = (horizontal_count / 2.f) * hstep;
+        auto hoffset_start = hstep * (horizontal_count / 2);
 
         if( (horizontal_count & 1) == 0 )
         {
             // Adjust start offset when number of horizontal rays is even
-            hoffset_start += 0.5f * hstep;
+            hoffset_start += hstep * 0.5f;
         }
 
         for( int y_ind = 0; y_ind < vertical_count; ++y_ind )

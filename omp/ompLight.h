@@ -71,7 +71,7 @@ namespace RT::OMP
         // Ray from intersection to light
         intersectionDistance = intersectionDistance - ShadowBias;
         
-        secondaryRay.Origin = intersectionDistance * primaryRay.Direction + primaryRay.Origin;
+        secondaryRay.Origin = primaryRay.Direction * intersectionDistance + primaryRay.Origin;
 
         for( int i = 0; i < Subdivs; ++i )
         {

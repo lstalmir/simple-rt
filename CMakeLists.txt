@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.13)
 
 project (simple-rt CXX CUDA)
 
+set_property (GLOBAL PROPERTY USE_FOLDERS ON)
+
 set (gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory (third-party/gtest)
 add_subdirectory (third-party/zlib)
@@ -51,6 +53,7 @@ set (base
     "File.h"
     "Intrin.h"
     "Main.cpp"
+    "Optimizations.h"
     "Scene.h"
     "Tbb.h"
     "Vec.h"

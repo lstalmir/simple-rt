@@ -334,7 +334,7 @@ namespace RT::OMP
 
         #else
 
-        reflectedRay.Direction = Direction - 2 * Direction.Dot( plane.Normal ) * plane.Normal;
+        reflectedRay.Direction = Direction - normal * (2 * Direction.Dot( normal ));
         reflectedRay.Origin = Direction * intersectionPoint + Origin;
 
         #endif

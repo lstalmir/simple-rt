@@ -99,7 +99,7 @@ namespace RT
 
             // Execute spawning kernel
             SpawnPrimaryRaysKernel<<<dispatchParams.NumBlocksPerGrid, dispatchParams.NumThreadsPerBlock>>>
-                ( DeviceMemory.Data(), hCount, vCount, rays.Data() );
+                ( Memory.Device(), hCount, vCount, rays.Device() );
 
             return rays;
         }

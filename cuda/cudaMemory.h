@@ -7,7 +7,7 @@ namespace RT
 {
     namespace CUDA
     {
-        class MemoryDeleter
+        class DeviceMemoryDeleter
         {
         public:
             inline void operator()( void* pDeviceMemory )
@@ -17,129 +17,76 @@ namespace RT
             }
         };
 
-        template<typename T>
-        class Memory
+        class HostMemoryDeleter
         {
         public:
-            inline Memory() : Memory( true )
+            inline void operator()( void* pHostMemory )
             {
-            }
-
-            inline virtual void UpdateDeviceMemory( const T* source )
-            {
-                const void* pSourceMemory = reinterpret_cast<const void*>(source);
-
-                CudaError::ThrowIfFailed
-                ( cudaMemcpy( m_pDeviceMemory.get(), pSourceMemory, sizeof( T ),
-                    cudaMemcpyKind::cudaMemcpyHostToDevice ) );
-            }
-
-            inline virtual void GetDeviceMemory( T* dest )
-            {
-                void* pDestMemory = reinterpret_cast<void*>(dest);
-
-                CudaError::ThrowIfFailed
-                ( cudaMemcpy( pDestMemory, m_pDeviceMemory.get(), sizeof( T ),
-                    cudaMemcpyKind::cudaMemcpyDeviceToHost ) );
-            }
-
-            inline virtual T* Data()
-            {
-                return reinterpret_cast<T*>(m_pDeviceMemory.get());
-            }
-
-            inline virtual const T* Data() const
-            {
-                return reinterpret_cast<const T*>(m_pDeviceMemory.get());
-            }
-
-        protected:
-            std::shared_ptr<void> m_pDeviceMemory;
-
-            // Custom deleter calling cudaFree
-            static const MemoryDeleter& DeviceMemoryDeleter()
-            {
-                static const MemoryDeleter deleter;
-                return deleter;
-            }
-
-            inline Memory( bool alloc )
-            {
-                if( alloc )
-                {
-                    // Allocate device memory
-                    AllocDeviceMemory( sizeof( T ) );
-                }
-            }
-
-            inline void AllocDeviceMemory( size_t byteSize )
-            {
-                void* pDeviceMemory = nullptr;
-
-                CudaError::ThrowIfFailed
-                ( cudaMalloc( &pDeviceMemory, byteSize ) );
-
-                // Construct shared_ptr with custom deleter to call cudaFree on delete
-                m_pDeviceMemory = std::shared_ptr<void>( pDeviceMemory,
-                    DeviceMemoryDeleter() );
+                free( pHostMemory );
             }
         };
 
         template<typename T>
-        class Array : public Memory<T>
+        class Array
         {
         public:
-            inline Array() : Memory<T>( false )
-                , m_Size( 0 )
+            inline Array()
             {
             }
 
-            inline Array( size_t size ) : Memory<T>( false )
-                , m_Size( size )
+            inline Array( size_t size )
             {
-                AllocDeviceMemory( sizeof( T ) * size );
-            }
-
-            inline virtual void UpdateDeviceMemory( const T* source ) override
-            {
-                // Update all elements
-                UpdateDeviceMemory( source, m_Size );
-            }
-
-            inline virtual void UpdateDeviceMemory( const T* source, size_t elements )
-            {
-                const void* pSourceMemory = reinterpret_cast<const void*>(source);
+                void* pDeviceMemory = nullptr;
 
                 CudaError::ThrowIfFailed
-                ( cudaMemcpy( m_pDeviceMemory.get(), pSourceMemory, sizeof( T ) * elements,
+                ( cudaMalloc( &pDeviceMemory, sizeof( T ) * size ) );
+
+                // Construct shared_ptr with custom deleter to call cudaFree on delete
+                m_pDeviceMemory = std::shared_ptr<void>( pDeviceMemory, DeviceMemoryDeleter() );
+
+                void* pHostMemory = malloc( sizeof( T ) * size );
+
+                // Reserve shadow host memory
+                m_pHostMemory = std::shared_ptr<void>( pHostMemory, HostMemoryDeleter() );
+
+                m_Size = size;
+            }
+
+            inline void Update()
+            {
+                CudaError::ThrowIfFailed
+                ( cudaMemcpyAsync( m_pDeviceMemory.get(), m_pHostMemory.get(), sizeof( T ) * (m_Size),
                     cudaMemcpyKind::cudaMemcpyHostToDevice ) );
             }
 
-            inline virtual void UpdateDeviceMemory( const T* source, size_t offset, size_t elements )
+            inline void Update( size_t firstElement, size_t numElements = 1 )
             {
-                const void* pSourceMemory = reinterpret_cast<const void*>(source);
+                const void* pSourceMemory = reinterpret_cast<const T*>(m_pHostMemory.get()) + firstElement;
 
-                void* pDestMemory = reinterpret_cast<char*>(m_pDeviceMemory.get())
-                    + sizeof( T ) * offset;
+                void* pDestMemory = reinterpret_cast<T*>(m_pDeviceMemory.get()) + firstElement;
 
                 CudaError::ThrowIfFailed
-                ( cudaMemcpy( pDestMemory, pSourceMemory, sizeof( T ) * elements,
+                ( cudaMemcpyAsync( pDestMemory, pSourceMemory, sizeof( T ) * (numElements - firstElement),
                     cudaMemcpyKind::cudaMemcpyHostToDevice ) );
             }
 
-            inline virtual void GetDeviceMemory( T* dest ) override
+            inline void Sync()
             {
-                // Get all elements
-                GetDeviceMemory( dest, m_Size );
-            }
-
-            inline virtual void GetDeviceMemory( T* dest, size_t elements )
-            {
-                void* pDestMemory = reinterpret_cast<void*>(dest);
-
                 CudaError::ThrowIfFailed
-                ( cudaMemcpy( pDestMemory, m_pDeviceMemory.get(), sizeof( T ) * elements,
+                ( cudaMemcpy( m_pHostMemory.get(), m_pDeviceMemory.get(), sizeof( T ) * m_Size,
                     cudaMemcpyKind::cudaMemcpyDeviceToHost ) );
+            }
+
+            inline void HostCopyTo( void* pDestMemory )
+            {
+                std::memcpy( pDestMemory, m_pHostMemory.get(), sizeof( T ) * m_Size );
+            }
+
+            inline void HostCopyTo( void* pDestMemory, size_t firstElement, size_t numElements = 1 )
+            {
+                const void* pSourceMemory = reinterpret_cast<const T*>(m_pHostMemory.get()) + firstElement;
+
+                std::memcpy( pDestMemory, pSourceMemory, sizeof( T ) * (numElements - firstElement) );
             }
 
             inline size_t Size() const
@@ -147,37 +94,41 @@ namespace RT
                 return m_Size;
             }
 
-            inline virtual T* Data() override
-            {
-                return Data( 0 );
-            }
-
-            inline virtual T* Data( size_t firstElement )
+            inline T* Device( int firstElement = 0 )
             {
                 return reinterpret_cast<T*>(m_pDeviceMemory.get()) + firstElement;
             }
 
-            inline virtual const T* Data() const override
-            {
-                return Data( 0 );
-            }
-
-            inline virtual const T* Data( size_t firstElement ) const
+            inline const T* Device( int firstElement = 0 ) const
             {
                 return reinterpret_cast<const T*>(m_pDeviceMemory.get()) + firstElement;
             }
 
-            inline virtual std::vector<T> GetDeviceMemory()
+            inline T* Host()
             {
-                std::vector<T> data( m_Size );
-
-                GetDeviceMemory( data.data(), m_Size );
-
-                return data;
+                return reinterpret_cast<T*>(m_pHostMemory.get());
             }
 
-        protected:
+            inline const T* Host() const
+            {
+                return reinterpret_cast<const T*>(m_pHostMemory.get());
+            }
+
+            inline T& Host( int firstElement )
+            {
+                return Host()[firstElement];
+            }
+
+            inline const T& Host( int firstElement ) const
+            {
+                return Host()[firstElement];
+            }
+
+        private:
             size_t m_Size;
+
+            std::shared_ptr<void> m_pHostMemory;
+            std::shared_ptr<void> m_pDeviceMemory;
         };
 
         template<typename T>
@@ -189,29 +140,44 @@ namespace RT
             }
 
             inline ArrayView( const Array<T>& array, int index )
-                : DeviceMemory( array )
-                , Index( index )
+                : m_Array( array )
+                , m_Index( index )
             {
             }
 
-            inline virtual void UpdateDeviceMemory( const T* source )
+            inline void Update()
             {
-                DeviceMemory.UpdateDeviceMemory( source, Index, 1 );
+                m_Array.Update( m_Index );
             }
 
-            inline virtual T* Data()
+            inline void Sync()
             {
-                return DeviceMemory.Data( Index );
+                m_Array.Sync();
             }
 
-            inline virtual const T* Data() const
+            inline T* Device()
             {
-                return DeviceMemory.Data( Index );
+                return m_Array.Device( m_Index );
+            }
+
+            inline const T* Device() const
+            {
+                return m_Array.Device( m_Index );
+            }
+
+            inline T& Host()
+            {
+                return m_Array.Host( m_Index );
+            }
+
+            inline const T& Host() const
+            {
+                return m_Array.Host( m_Index );
             }
 
         protected:
-            Array<T> DeviceMemory;
-            int Index;
+            Array<T> m_Array;
+            int m_Index;
         };
 
         template<typename T>
@@ -219,19 +185,13 @@ namespace RT
         {
             using DataType = T;
 
-            ArrayView<DataType> DeviceMemory;
-            DataType HostMemory;
+            ArrayView<DataType> Memory;
 
             DataWrapper() = default;
 
             inline DataWrapper( const Array<DataType>& array, int index )
-                : DeviceMemory( array, index )
+                : Memory( array, index )
             {
-            }
-
-            inline void UpdateDeviceMemory()
-            {
-                DeviceMemory.UpdateDeviceMemory( &HostMemory );
             }
         };
     }

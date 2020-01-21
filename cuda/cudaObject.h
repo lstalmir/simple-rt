@@ -22,7 +22,10 @@ namespace RT
             using BoxType = RT::CUDA::Box;
             using TriangleType = RT::CUDA::Triangle;
 
-            Array<TriangleType> DeviceTriangles;
+            Object() = default;
+            Object( const Array<ObjectData>& array, int index );
+
+            Array<TriangleType> Triangles;
             int FirstTriangle;
             int NumTriangles;
         };

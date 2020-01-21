@@ -66,28 +66,40 @@ namespace RT
             std::vector<fbxsdk::FbxNode*> pCameraNodes;
             FindCameras( pRootNode, pCameraNodes );
 
-            for( fbxsdk::FbxNode* pCamera : pCameraNodes )
+            Scene::CameraCountHint( scene, pCameraNodes.size() );
+
+            for( size_t index = 0; index < pCameraNodes.size(); ++index )
             {
-                scene.Cameras.push_back( Scene::CreateCameraFromFbx( pCamera ) );
+                scene.Cameras.push_back( Scene::CreateCameraFromFbx( scene, index, pCameraNodes[index] ) );
             }
+
+            Scene::OnCamerasLoaded( scene );
 
             // Get all lights
             std::vector<fbxsdk::FbxNode*> pLightNodes;
             FindLights( pRootNode, pLightNodes );
 
-            for( fbxsdk::FbxNode* pLight : pLightNodes )
+            Scene::LightCountHint( scene, pLightNodes.size() );
+
+            for( size_t index = 0; index < pLightNodes.size(); ++index )
             {
-                scene.Lights.push_back( Scene::CreateLightFromFbx( pLight ) );
+                scene.Lights.push_back( Scene::CreateLightFromFbx( scene, index, pLightNodes[index] ) );
             }
+
+            Scene::OnLightsLoaded( scene );
 
             // Get all objects
             std::vector<fbxsdk::FbxNode*> pObjectNodes;
             FindObjects( pRootNode, pObjectNodes );
 
-            for( fbxsdk::FbxNode* pObject : pObjectNodes )
+            Scene::ObjectCountHint( scene, pObjectNodes.size() );
+
+            for( size_t index = 0; index < pObjectNodes.size(); ++index )
             {
-                scene.Objects.push_back( Scene::CreateObjectFromFbx( pObject ) );
+                scene.Objects.push_back( Scene::CreateObjectFromFbx( scene, index, pObjectNodes[index] ) );
             }
+
+            Scene::OnObjectsLoaded( scene );
 
             return scene;
         }

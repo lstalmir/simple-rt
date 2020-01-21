@@ -20,7 +20,21 @@ namespace RT::OMP
     class SceneFunctions
     {
     public:
-        inline static typename SceneTypes::CameraType CreateCameraFromFbx( fbxsdk::FbxNode* pCameraNode )
+        inline static void CameraCountHint(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+            size_t count )
+        {
+        }
+
+        inline static void OnCamerasLoaded(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene )
+        {
+        }
+
+        inline static typename SceneTypes::CameraType CreateCameraFromFbx(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+            size_t index,
+            fbxsdk::FbxNode* pCameraNode )
         {
             // Get camera properties
             fbxsdk::FbxCamera* pCamera = static_cast<fbxsdk::FbxCamera*>(pCameraNode->GetNodeAttribute());
@@ -48,7 +62,21 @@ namespace RT::OMP
             return ompCamera;
         }
 
-        inline static typename SceneTypes::LightType CreateLightFromFbx( fbxsdk::FbxNode* pLightNode )
+        inline static void LightCountHint(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+            size_t count )
+        {
+        }
+
+        inline static void OnLightsLoaded(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene )
+        {
+        }
+
+        inline static typename SceneTypes::LightType CreateLightFromFbx(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+            size_t index,
+            fbxsdk::FbxNode* pLightNode )
         {
             typename SceneTypes::LightType ompLight;
             ompLight.Position = RT::vec4( pLightNode->LclTranslation.Get() );
@@ -58,7 +86,21 @@ namespace RT::OMP
             return ompLight;
         }
 
-        inline static typename SceneTypes::ObjectType CreateObjectFromFbx( fbxsdk::FbxNode* pObjectNode )
+        inline static void ObjectCountHint(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+            size_t count )
+        {
+        }
+
+        inline static void OnObjectsLoaded(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene )
+        {
+        }
+
+        inline static typename SceneTypes::ObjectType CreateObjectFromFbx(
+            Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+            size_t index,
+            fbxsdk::FbxNode* pObjectNode )
         {
             fbxsdk::FbxAMatrix meshTransform = GetMeshTransform( pObjectNode );
             #if RT_ENABLE_BACKFACE_CULL
@@ -133,6 +175,7 @@ namespace RT::OMP
             return ompObject;
         }
 
+    private:
         inline static fbxsdk::FbxAMatrix GetMeshTransform( fbxsdk::FbxNode* pNode )
         {
             fbxsdk::FbxAMatrix meshTransform;

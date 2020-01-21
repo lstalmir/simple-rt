@@ -22,6 +22,9 @@ namespace RT
         {
             using RayType = RT::CUDA::Ray;
 
+            Light() = default;
+            Light( const Array<LightData>& array, int index );
+
             Array<RayType::DataType> SpawnSecondaryRays( const RayType& primaryRay, float_t intersectionDistance ) const;
         };
     }

@@ -29,12 +29,16 @@ TEST( cudaArrayTests, AddElements )
     const int C_expected[5] = { 101, 203, 305, 407, 509 };
     int C_actual[5];
 
-    A.UpdateDeviceMemory( A_data );
-    B.UpdateDeviceMemory( B_data );
+    std::memcpy( A.Host(), A_data, sizeof( A_data ) );
+    std::memcpy( B.Host(), B_data, sizeof( B_data ) );
 
-    AddElements<<<1,5>>>( A.Data(), B.Data(), C.Data() );
+    A.Update();
+    B.Update();
 
-    C.GetDeviceMemory( C_actual );
+    AddElements<<<1,5>>>( A.Device(), B.Device(), C.Device() );
+
+    C.Sync();
+    C.HostCopyTo( C_actual );
 
     EXPECT_EQ( C_expected[0], C_actual[0] );
     EXPECT_EQ( C_expected[1], C_actual[1] );

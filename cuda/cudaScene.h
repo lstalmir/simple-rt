@@ -16,13 +16,38 @@ namespace RT
             using CameraType = RT::CUDA::Camera;
             using ObjectType = RT::CUDA::Object;
             using LightType = RT::CUDA::Light;
+
+            struct PrivateData
+            {
+                Array<CameraData> CameraDeviceMemory;
+                Array<ObjectData> ObjectDeviceMemory;
+                Array<LightData> LightDeviceMemory;
+            };
+
+            PrivateData Private;
         };
 
         template<typename SceneTypes = RT::CUDA::SceneTypes>
         class SceneFunctions
         {
         public:
-            inline static typename SceneTypes::CameraType CreateCameraFromFbx( fbxsdk::FbxNode* pCameraNode )
+            inline static void CameraCountHint(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene, 
+                size_t count )
+            {
+                scene.Private.CameraDeviceMemory = Array<CameraData>( count );
+            }
+
+            inline static void OnCamerasLoaded(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene )
+            {
+                scene.Private.CameraDeviceMemory.Update();
+            }
+
+            inline static typename SceneTypes::CameraType CreateCameraFromFbx(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+                size_t index,
+                fbxsdk::FbxNode* pCameraNode )
             {
                 // Get camera properties
                 fbxsdk::FbxCamera* pCamera = static_cast<fbxsdk::FbxCamera*>(pCameraNode->GetNodeAttribute());
@@ -40,27 +65,59 @@ namespace RT
                 direction.Normalize3();
 
                 // Store camera properties in internal structure
-                typename SceneTypes::CameraType ompCamera;
-                ompCamera.Origin = position;
-                ompCamera.Direction = direction;
-                ompCamera.Up = up;
-                ompCamera.HorizontalFOV = RT::Radians( fov );
-                ompCamera.AspectRatio = aspect;
+                typename SceneTypes::CameraType cudaCamera( scene.Private.CameraDeviceMemory, index );
+                cudaCamera.Memory.Host().Origin = position;
+                cudaCamera.Memory.Host().Direction = direction;
+                cudaCamera.Memory.Host().Up = up;
+                cudaCamera.Memory.Host().HorizontalFOV = RT::Radians( fov );
+                cudaCamera.Memory.Host().AspectRatio = aspect;
 
-                return ompCamera;
+                return cudaCamera;
             }
 
-            inline static typename SceneTypes::LightType CreateLightFromFbx( fbxsdk::FbxNode* pLightNode )
+            inline static void LightCountHint(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+                size_t count )
             {
-                typename SceneTypes::LightType ompLight;
-                ompLight.Position = RT::vec4( pLightNode->LclTranslation.Get() );
-                ompLight.Subdivs = RT_LIGHT_SUBDIVS;
-                ompLight.Radius = RT_LIGHT_RADIUS;
-
-                return ompLight;
+                scene.Private.LightDeviceMemory = Array<LightData>( count );
             }
 
-            inline static typename SceneTypes::ObjectType CreateObjectFromFbx( fbxsdk::FbxNode* pObjectNode )
+            inline static void OnLightsLoaded(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene )
+            {
+                scene.Private.LightDeviceMemory.Update();
+            }
+
+            inline static typename SceneTypes::LightType CreateLightFromFbx(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+                size_t index,
+                fbxsdk::FbxNode* pLightNode )
+            {
+                typename SceneTypes::LightType cudaLight( scene.Private.LightDeviceMemory, index );
+                cudaLight.Memory.Host().Position = RT::vec4( pLightNode->LclTranslation.Get() );
+                cudaLight.Memory.Host().Subdivs = RT_LIGHT_SUBDIVS;
+                cudaLight.Memory.Host().Radius = RT_LIGHT_RADIUS;
+
+                return cudaLight;
+            }
+
+            inline static void ObjectCountHint(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+                size_t count )
+            {
+                scene.Private.ObjectDeviceMemory = Array<ObjectData>( count );
+            }
+
+            inline static void OnObjectsLoaded(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene )
+            {
+                scene.Private.ObjectDeviceMemory.Update();
+            }
+
+            inline static typename SceneTypes::ObjectType CreateObjectFromFbx(
+                Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
+                size_t index,
+                fbxsdk::FbxNode* pObjectNode )
             {
                 fbxsdk::FbxAMatrix meshTransform = GetMeshTransform( pObjectNode );
                 #if RT_ENABLE_BACKFACE_CULL
@@ -82,7 +139,9 @@ namespace RT
 
                 const int polygonCount = pMesh->GetPolygonCount();
 
-                typename SceneTypes::ObjectType ompObject;
+                typename SceneTypes::ObjectType cudaObject( scene.Private.ObjectDeviceMemory, index );
+
+                cudaObject.Triangles = Array<Triangle>( polygonCount );
 
                 // Iterate over all polygons in the mesh
                 for( int poly = 0; poly < polygonCount; ++poly )
@@ -108,33 +167,34 @@ namespace RT
 
                     #if RT_ENABLE_BOUNDING_BOXES
                     // Update bounding box of the object
-                    ompObject.BoundingBox.Min.x = std::min( std::min( tri.A.x, tri.B.x ), std::min( tri.C.x, ompObject.BoundingBox.Min.x ) );
-                    ompObject.BoundingBox.Max.x = std::max( std::max( tri.A.x, tri.B.x ), std::max( tri.C.x, ompObject.BoundingBox.Max.x ) );
-                    ompObject.BoundingBox.Min.y = std::min( std::min( tri.A.y, tri.B.y ), std::min( tri.C.y, ompObject.BoundingBox.Min.y ) );
-                    ompObject.BoundingBox.Max.y = std::max( std::max( tri.A.y, tri.B.y ), std::max( tri.C.y, ompObject.BoundingBox.Max.y ) );
-                    ompObject.BoundingBox.Min.z = std::min( std::min( tri.A.z, tri.B.z ), std::min( tri.C.z, ompObject.BoundingBox.Min.z ) );
-                    ompObject.BoundingBox.Max.z = std::max( std::max( tri.A.z, tri.B.z ), std::max( tri.C.z, ompObject.BoundingBox.Max.z ) );
+                    cudaObject.Memory.Host().BoundingBox.Min.x = std::min( std::min( tri.A.x, tri.B.x ), std::min( tri.C.x, cudaObject.Memory.Host().BoundingBox.Min.x ) );
+                    cudaObject.Memory.Host().BoundingBox.Max.x = std::max( std::max( tri.A.x, tri.B.x ), std::max( tri.C.x, cudaObject.Memory.Host().BoundingBox.Max.x ) );
+                    cudaObject.Memory.Host().BoundingBox.Min.y = std::min( std::min( tri.A.y, tri.B.y ), std::min( tri.C.y, cudaObject.Memory.Host().BoundingBox.Min.y ) );
+                    cudaObject.Memory.Host().BoundingBox.Max.y = std::max( std::max( tri.A.y, tri.B.y ), std::max( tri.C.y, cudaObject.Memory.Host().BoundingBox.Max.y ) );
+                    cudaObject.Memory.Host().BoundingBox.Min.z = std::min( std::min( tri.A.z, tri.B.z ), std::min( tri.C.z, cudaObject.Memory.Host().BoundingBox.Min.z ) );
+                    cudaObject.Memory.Host().BoundingBox.Max.z = std::max( std::max( tri.A.z, tri.B.z ), std::max( tri.C.z, cudaObject.Memory.Host().BoundingBox.Max.z ) );
                     #endif
 
-                    ompObject.Triangles.push_back( tri );
+                    cudaObject.Triangles.Host( poly ) = tri;
                 }
 
                 if( auto* pMaterial = (fbxsdk::FbxSurfacePhong*)pObjectNode->GetMaterial( 0 ) )
                 {
-                    ompObject.Color = vec4( pMaterial->Diffuse.Get() ) * 255.f;
-                    ompObject.Ior = static_cast<RT::float_t>(pMaterial->Specular.Get()[0] * 10.f);
+                    cudaObject.Memory.Host().Color = vec4( pMaterial->Diffuse.Get() ) * 255.f;
+                    cudaObject.Memory.Host().Ior = static_cast<RT::float_t>(pMaterial->Specular.Get()[0] * 10.f);
                 }
                 else
                 {
-                    ompObject.Color.x = static_cast<RT::float_t>(rand() % 256);
-                    ompObject.Color.y = static_cast<RT::float_t>(rand() % 256);
-                    ompObject.Color.z = static_cast<RT::float_t>(rand() % 256);
-                    ompObject.Ior = 3.5f;
+                    cudaObject.Memory.Host().Color.x = static_cast<RT::float_t>(rand() % 256);
+                    cudaObject.Memory.Host().Color.y = static_cast<RT::float_t>(rand() % 256);
+                    cudaObject.Memory.Host().Color.z = static_cast<RT::float_t>(rand() % 256);
+                    cudaObject.Memory.Host().Ior = 3.5f;
                 }
 
-                return ompObject;
+                return cudaObject;
             }
 
+        private:
             inline static fbxsdk::FbxAMatrix GetMeshTransform( fbxsdk::FbxNode* pNode )
             {
                 fbxsdk::FbxAMatrix meshTransform;

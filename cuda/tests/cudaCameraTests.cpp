@@ -16,21 +16,24 @@ namespace
         ompCamera.AspectRatio = 1;
         ompCamera.HorizontalFOV = RT::Radians( 75 );
 
-        auto expectedPrimaryRays = ompCamera
+        const auto expectedPrimaryRays = ompCamera
             .SpawnPrimaryRays( horizontalRays, verticalRays );
 
         RT::CUDA::Array<RT::CUDA::CameraData> cudaCameraDeviceMemory( 1 );
         RT::CUDA::Camera cudaCamera( cudaCameraDeviceMemory, 0 );
-        cudaCamera.HostMemory.Direction = RT::vec4( 1, 0, 0 );
-        cudaCamera.HostMemory.Origin = RT::vec4( 0, 0, 0 );
-        cudaCamera.HostMemory.Up = RT::vec4( 0, 1, 0 );
-        cudaCamera.HostMemory.AspectRatio = 1;
-        cudaCamera.HostMemory.HorizontalFOV = RT::Radians( 75 );
-        cudaCamera.UpdateDeviceMemory();
+        cudaCamera.Memory.Host().Direction = RT::vec4( 1, 0, 0 );
+        cudaCamera.Memory.Host().Origin = RT::vec4( 0, 0, 0 );
+        cudaCamera.Memory.Host().Up = RT::vec4( 0, 1, 0 );
+        cudaCamera.Memory.Host().AspectRatio = 1;
+        cudaCamera.Memory.Host().HorizontalFOV = RT::Radians( 75 );
+        cudaCamera.Memory.Update();
 
-        auto actualPrimaryRays = cudaCamera
-            .SpawnPrimaryRays( horizontalRays, verticalRays )
-            .GetDeviceMemory();
+        auto actualPrimaryRaysDeviceMemory = cudaCamera
+            .SpawnPrimaryRays( horizontalRays, verticalRays );
+
+        std::vector<RT::CUDA::RayData> actualPrimaryRays( actualPrimaryRaysDeviceMemory.Size() );
+        actualPrimaryRaysDeviceMemory.Sync();
+        actualPrimaryRaysDeviceMemory.HostCopyTo( actualPrimaryRays.data() );
 
         ASSERT_EQ( expectedPrimaryRays.size(), actualPrimaryRays.size() );
 

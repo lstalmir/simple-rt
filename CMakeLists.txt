@@ -61,6 +61,7 @@ set (base
     
 set (cuda
     "cuda/cudaApplication.h"
+    "cuda/cudaApplication.cu"
     "cuda/cudaCamera.h"
     "cuda/cudaCamera.cu"
     "cuda/cudaCommon.h"
@@ -68,7 +69,9 @@ set (cuda
     "cuda/cudaLight.cu"
     "cuda/cudaMemory.h"
     "cuda/cudaObject.h"
+    "cuda/cudaObject.cu"
     "cuda/cudaRay.h"
+    "cuda/cudaRay.cu"
     "cuda/cudaScene.h"
     "cuda/cudaTriangle.h"
     )
@@ -76,7 +79,8 @@ set (cuda
 set (cudatests
     "cuda/tests/cudaArrayTests.cu"
     "cuda/tests/cudaCameraTests.cpp"
-    "cuda/tests/cudaDispatchTests.cu"
+    "cuda/tests/cudaDispatchTests.cpp"
+    "cuda/tests/cudaLightTests.cpp"
     )
     
 set (omp

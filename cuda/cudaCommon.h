@@ -10,9 +10,9 @@
 #include <math_functions.h>
 
 // Helper declarations
-dim3 blockDim;
-uint3 blockIdx;
-uint3 threadIdx;
+extern const dim3 blockDim;
+extern const uint3 blockIdx;
+extern const uint3 threadIdx;
 
 #endif // __INTELLISENSE__
 

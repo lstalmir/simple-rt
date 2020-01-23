@@ -88,7 +88,7 @@ namespace RT::OMP
 
         inline static void ObjectCountHint(
             Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
-            size_t count )
+            const std::vector<fbxsdk::FbxNode*>& objects )
         {
         }
 

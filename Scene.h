@@ -92,7 +92,7 @@ namespace RT
             std::vector<fbxsdk::FbxNode*> pObjectNodes;
             FindObjects( pRootNode, pObjectNodes );
 
-            Scene::ObjectCountHint( scene, pObjectNodes.size() );
+            Scene::ObjectCountHint( scene, pObjectNodes );
 
             for( size_t index = 0; index < pObjectNodes.size(); ++index )
             {

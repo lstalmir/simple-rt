@@ -10,10 +10,11 @@ namespace RT
         class DeviceMemoryDeleter
         {
         public:
-            inline void operator()( void* pDeviceMemory )
+            inline void operator()( void*& pDeviceMemory )
             {
-                CudaError::Assert
-                ( cudaFree( pDeviceMemory ) );
+                cudaFree( pDeviceMemory );
+
+                pDeviceMemory = nullptr;
             }
         };
 

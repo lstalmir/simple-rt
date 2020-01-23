@@ -15,6 +15,8 @@ namespace RT
             Box BoundingBox;
             vec4 Color;
             float Ior = 0.f;
+            int FirstTriangle;
+            int NumTriangles;
         };
 
         struct Object : DataWrapper<ObjectData>
@@ -26,8 +28,6 @@ namespace RT
             Object( const Array<ObjectData>& array, int index );
 
             Array<TriangleType> Triangles;
-            int FirstTriangle;
-            int NumTriangles;
         };
     }
 }

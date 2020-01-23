@@ -65,17 +65,87 @@ namespace RT
             }
         };
 
+        typedef char kilobyte[1024];
+        typedef kilobyte megabyte[1024];
+
+        inline constexpr unsigned long long operator""_B( unsigned long long value )
+        {
+            return value;
+        }
+
+        inline constexpr unsigned long long operator""_kB( unsigned long long value )
+        {
+            return value * sizeof( kilobyte );
+        }
+
+        inline constexpr unsigned long long operator""_MB( unsigned long long value )
+        {
+            return value * sizeof( megabyte );
+        }
+
         struct DispatchParameters
         {
             unsigned int NumThreadsPerBlock;
             unsigned int NumBlocksPerGrid;
             unsigned int SharedMemorySize;
 
-            inline DispatchParameters( unsigned int numInvocationsRequired,
-                unsigned int maxThreadsPerBlock = 32 )
+            inline DispatchParameters( unsigned int numInvocationsRequired )
+                : _NumInvocationsRequiredHint( numInvocationsRequired )
             {
-                NumThreadsPerBlock = std::min( numInvocationsRequired, maxThreadsPerBlock );
-                NumBlocksPerGrid = ((numInvocationsRequired - 1) / NumThreadsPerBlock) + 1;
+                UpdateInvocationParameters();
+            }
+
+            inline DispatchParameters& MaxThreadsPerBlock( unsigned int maxThreadsPerBlock )
+            {
+                _MaxThreadsPerBlockHint = maxThreadsPerBlock;
+                UpdateInvocationParameters();
+                return *this;
+            }
+
+            inline DispatchParameters& SharedMemoryPerThread( unsigned int sharedMemoryPerThread )
+            {
+                _SharedMemoryPerThreadHint = sharedMemoryPerThread;
+                UpdateInvocationParameters();
+                return *this;
+            }
+
+            inline DispatchParameters& LocalMemoryPerThread( unsigned int localMemoryPerThread )
+            {
+                _LocalMemoryPerThreadHint = localMemoryPerThread;
+                UpdateInvocationParameters();
+                return *this;
+            }
+
+        private:
+            unsigned int _NumInvocationsRequiredHint;
+
+            unsigned int _MaxThreadsPerBlockHint = 256;
+            unsigned int _SharedMemoryPerThreadHint = 0;
+            unsigned int _LocalMemoryPerThreadHint = 0;
+
+            static constexpr unsigned int _MaxSharedMemorySize = 48_kB;
+            static constexpr unsigned int _MaxLocalMemorySize = 12_kB;
+
+            inline void UpdateInvocationParameters()
+            {
+                unsigned int maxThreadsPerBlock = _MaxThreadsPerBlockHint;
+
+                if( _SharedMemoryPerThreadHint > 0 )
+                {
+                    // Take shared memory size into account
+                    // Each thread must get at least _SharedMemoryPerThreadHint bytes
+                    maxThreadsPerBlock = std::min( _MaxSharedMemorySize / _SharedMemoryPerThreadHint, maxThreadsPerBlock );
+                }
+
+                if( _LocalMemoryPerThreadHint > 0 )
+                {
+                    // Take local memory size into account
+                    // Each thread must get at least _LocalMemoryPerThreadHint bytes
+                    maxThreadsPerBlock = std::min( _MaxLocalMemorySize / _LocalMemoryPerThreadHint, maxThreadsPerBlock );
+                }
+
+                NumThreadsPerBlock = std::min( _NumInvocationsRequiredHint, maxThreadsPerBlock );
+                NumBlocksPerGrid = ((_NumInvocationsRequiredHint - 1) / NumThreadsPerBlock) + 1;
                 SharedMemorySize = 0;
             }
         };

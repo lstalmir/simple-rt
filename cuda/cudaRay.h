@@ -2,6 +2,7 @@
 #include "../Optimizations.h"
 #include "../Vec.h"
 #include "cudaCommon.h"
+#include "cudaLock.h"
 #include "cudaMemory.h"
 #include "cudaTriangle.h"
 
@@ -34,6 +35,7 @@ namespace RT
             Triangle Triangle;
             vec4 Color;
             float Ior;
+            float Intensity;
         };
 
         struct SecondaryRayData
@@ -44,6 +46,7 @@ namespace RT
             int Depth;
             IntersectionData Intersection;
             SecondaryRayType Type;
+            int Mutex;
         };
 
         struct SecondaryRay : DataWrapper<SecondaryRayData>

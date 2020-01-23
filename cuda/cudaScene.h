@@ -22,6 +22,7 @@ namespace RT
                 Array<CameraData> CameraDeviceMemory;
                 Array<ObjectData> ObjectDeviceMemory;
                 Array<LightData> LightDeviceMemory;
+                Array<Triangle> TriangleDeviceMemory;
             };
 
             PrivateData Private;
@@ -103,15 +104,26 @@ namespace RT
 
             inline static void ObjectCountHint(
                 Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene,
-                size_t count )
+                const std::vector<fbxsdk::FbxNode*>& objects )
             {
-                scene.Private.ObjectDeviceMemory = Array<ObjectData>( count );
+                scene.Private.ObjectDeviceMemory = Array<ObjectData>( objects.size() );
+
+                // Calculate total number of triangles
+                size_t numTriangles = 0;
+
+                for( const auto& pObjectNode : objects )
+                {
+                    numTriangles += pObjectNode->GetMesh()->GetPolygonCount();
+                }
+
+                scene.Private.TriangleDeviceMemory = Array<Triangle>( numTriangles );
             }
 
             inline static void OnObjectsLoaded(
                 Scene<MakeSceneTraits<SceneTypes, SceneFunctions>>& scene )
             {
                 scene.Private.ObjectDeviceMemory.Update();
+                scene.Private.TriangleDeviceMemory.Update();
             }
 
             inline static typename SceneTypes::ObjectType CreateObjectFromFbx(
@@ -119,6 +131,9 @@ namespace RT
                 size_t index,
                 fbxsdk::FbxNode* pObjectNode )
             {
+                // Ugh
+                static size_t numTrianglesProcessed = 0;
+
                 fbxsdk::FbxAMatrix meshTransform = GetMeshTransform( pObjectNode );
                 #if RT_ENABLE_BACKFACE_CULL
                 fbxsdk::FbxAMatrix normalTransform = GetNormalTransform( pObjectNode );
@@ -141,7 +156,9 @@ namespace RT
 
                 typename SceneTypes::ObjectType cudaObject( scene.Private.ObjectDeviceMemory, index );
 
-                cudaObject.Triangles = Array<Triangle>( polygonCount );
+                cudaObject.Triangles = scene.Private.TriangleDeviceMemory;
+                cudaObject.Memory.Host().FirstTriangle = numTrianglesProcessed;
+                cudaObject.Memory.Host().NumTriangles = polygonCount;
 
                 // Iterate over all polygons in the mesh
                 for( int poly = 0; poly < polygonCount; ++poly )
@@ -175,7 +192,7 @@ namespace RT
                     cudaObject.Memory.Host().BoundingBox.Max.z = std::max( std::max( tri.A.z, tri.B.z ), std::max( tri.C.z, cudaObject.Memory.Host().BoundingBox.Max.z ) );
                     #endif
 
-                    cudaObject.Triangles.Host( poly ) = tri;
+                    cudaObject.Triangles.Host( numTrianglesProcessed + poly ) = tri;
                 }
 
                 if( auto* pMaterial = (fbxsdk::FbxSurfacePhong*)pObjectNode->GetMaterial( 0 ) )
@@ -190,6 +207,9 @@ namespace RT
                     cudaObject.Memory.Host().Color.z = static_cast<RT::float_t>(rand() % 256);
                     cudaObject.Memory.Host().Ior = 3.5f;
                 }
+
+                // Ugh #2
+                numTrianglesProcessed += polygonCount;
 
                 return cudaObject;
             }

@@ -67,6 +67,7 @@ set (cuda
     "cuda/cudaCommon.h"
     "cuda/cudaLight.h"
     "cuda/cudaLight.cu"
+    "cuda/cudaLock.h"
     "cuda/cudaMemory.h"
     "cuda/cudaObject.h"
     "cuda/cudaObject.cu"

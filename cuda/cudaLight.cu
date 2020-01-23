@@ -41,9 +41,9 @@ namespace RT
 
         Array<Light::RayType::DataType> Light::SpawnSecondaryRays( const RayType& primaryRay, float_t intersectionDistance ) const
         {
-            Array<RayType::DataType> rays( Memory.Host().Subdivs );
+            Array<RayType::DataType> rays( RT_LIGHT_SUBDIVS );
 
-            DispatchParameters dispatchParams( Memory.Host().Subdivs );
+            DispatchParameters dispatchParams( RT_LIGHT_SUBDIVS );
 
             // Execute spawning kernel
             SpawnSecondaryRaysKernel<<<dispatchParams.NumBlocksPerGrid, dispatchParams.NumThreadsPerBlock>>>

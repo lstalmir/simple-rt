@@ -39,6 +39,8 @@ namespace RT
                     {
                         m_Scene.Private.CameraDeviceMemory.Host( camera ).AspectRatio = aspect;
                     }
+
+                    m_Scene.Private.CameraDeviceMemory.Update();
                 }
             }
 
@@ -47,62 +49,61 @@ namespace RT
                 const int X = m_CommandLineArguments.appWidth;
                 const int Y = m_CommandLineArguments.appHeight;
 
-                const auto primaryRays = m_Scene.Cameras[0].SpawnPrimaryRays( X, Y );
-                const int primaryRayCount = (int)primaryRays.Size();
+                auto primaryRays_raw = m_Scene.Cameras[0].SpawnPrimaryRays( X, Y );
+                const int primaryRayCount = (int)primaryRays_raw.Size();
 
-                Array<SecondaryRayData> primaryRaysDeviceMemory( primaryRayCount );
-
-                m_Rays.resize( primaryRayCount );
+                Array<SecondaryRayData> primaryRays( primaryRayCount );
 
                 #if RT_ENABLE_ANTIALIASING
-                const int imageDataSize = primaryRayCount / 4;
+                const int imageDataSize = 3 * primaryRayCount / 4;
                 #else
-                const int imageDataSize = primaryRayCount;
+                const int imageDataSize = 3 * primaryRayCount;
                 #endif
 
-                struct char3 { png_byte r, g, b; };
-                std::vector<char3> pDstImageData( imageDataSize );
-
-                memset( pDstImageData.data(), 0, pDstImageData.size() * sizeof( char3 ) );
+                std::vector<png_byte> pDstImageData( imageDataSize );
+                Array<png_byte> imageData( imageDataSize );
 
                 // Constant in the runtime
                 const int objectCount = (int)m_Scene.Objects.size();
+
+                primaryRays_raw.Sync();
 
                 BenchmarkBegin();
 
                 // Spawn primary ray tasks
                 for( int ray = 0; ray < primaryRayCount; ++ray )
                 {
-                    auto rayData = SecondaryRay( primaryRaysDeviceMemory, ray );
-                    rayData.Memory.Host().Ray = primaryRays.Host( ray );
+                    auto rayData = SecondaryRay( primaryRays, ray );
+                    rayData.Memory.Host().Ray = primaryRays_raw.Host( ray );
                     rayData.Memory.Host().PrimaryRayIndex = ray;
                     rayData.Memory.Host().PreviousRayIndex = -1;
                     rayData.Memory.Host().Depth = 0;
                     rayData.Memory.Host().Intersection.Distance = vec4( std::numeric_limits<RT::float_t>::infinity() );
                     rayData.Memory.Host().Type = SecondaryRayType::ePrimary;
-
-                    m_Tasks.push( std::bind( &Application::ObjectIntersection, this, ray ) );
+                    rayData.Memory.Host().Mutex = 0;
                 }
 
-                primaryRaysDeviceMemory.Update();
+                primaryRays.Update();
 
-                // Execute tasks
-                std::function<void()> task;
+                // Array of rays to process
+                Array<SecondaryRayData> secondaryRays = primaryRays;
 
-                while( !m_Tasks.empty() )
+                while( secondaryRays.Size() > 0 )
                 {
-                    m_Tasks.front()(); // invoke
-                    m_Tasks.pop();
+                    const int numIntersections = ComputeIntersections( secondaryRays );
+
+                    // Update primary rays
+                    ProcessLightIntersections( primaryRays, secondaryRays );
+
+                    // Create new ray set from computed intersections
+                    //secondaryRays = SpawnSecondaryRays( secondaryRays, numIntersections );
+                    break;
                 }
 
-                // Merge results
-                for( int i = 0; i < primaryRayCount; ++i )
-                {
-                    const auto& ray = m_Rays[i];
-                    //pDstImageData[i].r = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.x );
-                    //pDstImageData[i].g = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.y );
-                    //pDstImageData[i].b = (png_byte)std::min( 255.0f, ray.m_Intersection.m_Color.z );
-                }
+                FinalizePrimaryRays( primaryRays, imageData );
+
+                imageData.Sync();
+                imageData.HostCopyTo( pDstImageData.data() );
 
                 BenchmarkEnd();
 
@@ -123,11 +124,16 @@ namespace RT
         protected:
             RT::Scene<SceneTraits> m_Scene;
 
-            std::vector<SecondaryRay> m_Rays;
-            std::queue<std::function<void()>> m_Tasks;
+            int ComputeIntersections( Array<SecondaryRayData> rays );
 
-            void ObjectIntersection( Array<RayData> rays );
+            // These arrays must be preserved until the device is synced
+            Array<RayData> m_ShadowRays;
+            Array<int> m_NumShadowIntersections;
+            void ProcessLightIntersections( Array<SecondaryRayData> primaryRays, Array<SecondaryRayData> rays );
 
+            Array<SecondaryRayData> SpawnSecondaryRays( Array<SecondaryRayData> rays, int numIntersections );
+
+            void FinalizePrimaryRays( Array<SecondaryRayData> primaryRays, Array<png_byte> imageData );
         };
     }
 }

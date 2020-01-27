@@ -103,9 +103,7 @@ namespace RT::OMP
             fbxsdk::FbxNode* pObjectNode )
         {
             fbxsdk::FbxAMatrix meshTransform = GetMeshTransform( pObjectNode );
-            #if RT_ENABLE_BACKFACE_CULL
             fbxsdk::FbxAMatrix normalTransform = GetNormalTransform( pObjectNode );
-            #endif
 
             // Get mesh
             fbxsdk::FbxMesh* pMesh = pObjectNode->GetMesh();

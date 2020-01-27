@@ -258,7 +258,7 @@ namespace RT
 
                         RT::vec4 intersectionPoint = IntersectRayTriangle( ray, triangle );
 
-                        if( intersectionPoint.w < INFINITY )
+                        if( intersectionPoint.x < INFINITY )
                         {
                             // The light ray hits other object
                             numIntersections++;
@@ -287,8 +287,11 @@ namespace RT
             const int threadId = blockIdx.x * blockDim.x + threadIdx.x;
 
             const int rayIdx = threadId / (numLights * numObjects);
-            const int lightIdx = threadId / (numRays * numObjects);
             const int objIdx = threadId % numObjects;
+
+            const int lightIdx = (rayIdx * numLights) + (threadId / (numRays * numObjects));
+
+            const int firstShadowRayIdx = lightIdx * RT_LIGHT_SUBDIVS;
 
             if( rayIdx >= numRays )
             {
@@ -305,7 +308,7 @@ namespace RT
 
             // Intersect with object
             int numIntersections = IntersectShadowRaysKernel(
-                pShadowRays + (lightIdx * RT_LIGHT_SUBDIVS),
+                pShadowRays + firstShadowRayIdx,
                 pObjects[objIdx],
                 pTriangles );
 
@@ -324,7 +327,6 @@ namespace RT
             const int threadId = blockIdx.x * blockDim.x + threadIdx.x;
 
             const int rayIdx = threadId / numLights;
-            const int lightIdx = threadId % numLights;
 
             if( rayIdx >= numRays )
             {
@@ -339,9 +341,9 @@ namespace RT
                 return;
             }
 
-            SecondaryRayData& primaryRay = pPrimaryRays[ray.PrimaryRayIndex];
-
-            const int numIntersections = pNumIntersections[lightIdx];
+            // If shadow ray intersects more than one object, numIntersections is greater than RT_LIGHT_SUBDIVS
+            // Clamp to have RT_LIGHT_SUBDIVS - numIntersections non-negative
+            const int numIntersections = min( pNumIntersections[threadId], RT_LIGHT_SUBDIVS );
 
             float lightIntensity =
                 (RT_LIGHT_SUBDIVS - numIntersections) * 1.0f +
@@ -444,7 +446,7 @@ namespace RT
             params = DispatchParameters( rays.Size() * m_Scene.Lights.size() * m_Scene.Objects.size() );
             
             // Previously dispatched kernels have already finished executing
-            m_NumShadowIntersections = Array<int>( m_Scene.Lights.size() );
+            m_NumShadowIntersections = Array<int>( rays.Size() * m_Scene.Lights.size() );
             
             IntersectShadowRaysKernel<<<params.NumBlocksPerGrid, params.NumThreadsPerBlock>>>(
                 rays.Device(),

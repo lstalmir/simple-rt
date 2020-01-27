@@ -96,8 +96,7 @@ namespace RT
                     ProcessLightIntersections( primaryRays, secondaryRays );
 
                     // Create new ray set from computed intersections
-                    //secondaryRays = SpawnSecondaryRays( secondaryRays, numIntersections );
-                    break;
+                    secondaryRays = SpawnSecondaryRays( secondaryRays, numIntersections );
                 }
 
                 FinalizePrimaryRays( primaryRays, imageData );

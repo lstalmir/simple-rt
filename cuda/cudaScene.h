@@ -98,6 +98,7 @@ namespace RT
                 cudaLight.Memory.Host().Position = RT::vec4( pLightNode->LclTranslation.Get() );
                 cudaLight.Memory.Host().Subdivs = RT_LIGHT_SUBDIVS;
                 cudaLight.Memory.Host().Radius = RT_LIGHT_RADIUS;
+                cudaLight.Memory.Host().ShadowBias = 0.04f;
 
                 return cudaLight;
             }
@@ -135,9 +136,7 @@ namespace RT
                 static size_t numTrianglesProcessed = 0;
 
                 fbxsdk::FbxAMatrix meshTransform = GetMeshTransform( pObjectNode );
-                #if RT_ENABLE_BACKFACE_CULL
                 fbxsdk::FbxAMatrix normalTransform = GetNormalTransform( pObjectNode );
-                #endif
 
                 // Get mesh
                 fbxsdk::FbxMesh* pMesh = pObjectNode->GetMesh();
@@ -157,8 +156,8 @@ namespace RT
                 typename SceneTypes::ObjectType cudaObject( scene.Private.ObjectDeviceMemory, index );
 
                 cudaObject.Triangles = scene.Private.TriangleDeviceMemory;
-                cudaObject.Memory.Host().FirstTriangle = numTrianglesProcessed;
-                cudaObject.Memory.Host().NumTriangles = polygonCount;
+                cudaObject.Memory.Host().FirstTriangle = static_cast<int>(numTrianglesProcessed);
+                cudaObject.Memory.Host().NumTriangles = static_cast<int>(polygonCount);
 
                 // Iterate over all polygons in the mesh
                 for( int poly = 0; poly < polygonCount; ++poly )

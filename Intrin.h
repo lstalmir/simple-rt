@@ -1,4 +1,5 @@
 #pragma once
+#include "Optimizations.h"
 #include <immintrin.h>
 
 #if !defined _MSC_VER
@@ -117,4 +118,20 @@ namespace RT
         xmm1 = _mm_mul_ps( xmm2, xmm3 );
         return _mm_sub_ps( xmm0, xmm1 );
     }
+
+    #if RT_ENABLE_AVX
+    inline __m256 Dot( __m256 a, __m256 b )
+    {
+        __m256 ymm0, ymm1, ymm2;
+        __m256d ymm1d;
+        ymm0 = _mm256_mul_ps( a, b );
+        ymm1 = _mm256_movehdup_ps( ymm0 );
+        ymm2 = _mm256_add_ps( ymm0, ymm1 );
+        ymm1d = _mm256_castps_pd( ymm2 );
+        ymm1d = _mm256_movedup_pd( ymm1d );
+        ymm1 = _mm256_castpd_ps( ymm1d );
+        ymm2 = _mm256_add_ps( ymm2, ymm1 );
+        return _mm256_shuffle_ps( ymm2, ymm2, _MM_SHUFFLE( 2, 2, 2, 2 ) );
+    }
+    #endif
 }

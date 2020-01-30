@@ -233,6 +233,7 @@ const option RT::CommandLineArguments::s_pLongOptions[] = {
     { "input", required_argument, 0, 'i' },
     { "output", required_argument, 0, 'o' },
     { "test", no_argument, 0, 't' },
+    { "benchmark", no_argument, 0, 'bnch' },
     { "cuda", no_argument, 0, 'cuda' },
     { "openmp", no_argument, 0, 'omp' },
     { "width", required_argument, 0, 'w' },
@@ -356,6 +357,14 @@ RT::CommandLineArguments RT::CommandLineArguments::Parse( int argc, char** argv,
                 break;
             }
 
+            // Benchmark
+            case 'bnch':
+            {
+                WARN_REDEF( cmdargs.appMode == ApplicationMode::eUndefined, "Application mode", err );
+                cmdargs.appMode = ApplicationMode::eBenchmark;
+                break;
+            }
+
             // OpenCL
             case 'cuda':
             {
@@ -422,7 +431,8 @@ bool RT::CommandLineArguments::Validate( std::ostream& err ) const
         valid = false;
     }
 
-    if( appMode != ApplicationMode::eTest )
+    if( appMode != ApplicationMode::eTest &&
+        appMode != ApplicationMode::eBenchmark )
     {
         if( appInputFilename.empty() )
         {

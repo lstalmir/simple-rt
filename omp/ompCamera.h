@@ -3,6 +3,7 @@
 #include "../Intrin.h"
 #include "../Vec.h"
 #include "ompRay.h"
+#include "ompRay2.h"
 #include <omp.h>
 #include <vector>
 
@@ -19,6 +20,7 @@ namespace RT::OMP
         float_t AspectRatio;
 
         std::vector<Ray> SpawnPrimaryRays( int horizontal_count, int vertical_count );
+        std::vector<Ray2x2> SpawnPrimaryRays2( int horizontal_count, int vertical_count );
     };
 
     inline std::vector<Ray> Camera::SpawnPrimaryRays( int horizontal_count, int vertical_count )

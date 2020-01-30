@@ -25,6 +25,11 @@ namespace RT
 
         inline vec4() = default;
 
+        inline __host__ __device__ vec4( const vec4 & v )
+            : x( v.x ), y( v.y ), z( v.z ), w( v.w )
+        {
+        }
+
         // Initialize vector components with one value
         inline __host__ __device__ explicit vec4( float_t x_ )
             : x( x_ ), y( x_ ), z( x_ ), w( x_ )
@@ -210,4 +215,27 @@ namespace RT
     //{
     //    return v * s;
     //}
+
+    struct alignas(32) vec4_2x2
+    {
+        vec4 m[ 4 ];
+
+        inline vec4_2x2() = default;
+
+        inline __host__ __device__ vec4_2x2( const vec4_2x2 & v )
+        {
+            m[ 0 ] = v.m[ 0 ];
+            m[ 1 ] = v.m[ 1 ];
+            m[ 2 ] = v.m[ 2 ];
+            m[ 3 ] = v.m[ 3 ];
+        }
+
+        inline __host__ __device__ vec4_2x2& operator=( const vec4_2x2& v )
+        {
+            m[ 0 ] = v.m[ 0 ];
+            m[ 1 ] = v.m[ 1 ];
+            m[ 2 ] = v.m[ 2 ];
+            m[ 3 ] = v.m[ 3 ];
+        }
+    };
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include "../Optimizations.h"
-#include "../Intrin.h"
 #include "../Vec.h"
 #include "ompBox.h"
 #include "ompPlane.h"
@@ -9,84 +8,162 @@
 
 namespace RT::OMP
 {
-    struct alignas(32) Ray
+    struct alignas(32) Ray2x2
     {
-        vec4 Origin;
-        vec4 Direction;
+        vec4 Origin[ 4 ];
+        vec4 Direction[ 4 ];
 
-        vec4 Intersect( const Plane & plane ) const;
+        vec4_2x2 Intersect( const Plane & plane ) const;
         vec4 Intersect( const Triangle & triangle ) const;
         bool Intersect( const Box & box ) const;
-        Ray Reflect( const vec4 & normal, const vec4 & intersectionPoint ) const;
+        Ray2x2 Reflect( const vec4 & normal, const vec4 & intersectionPoint ) const;
         float Fresnel( const vec4 & normal, float ior ) const;
     };
 
-    inline vec4 Ray::Intersect( const Plane& plane ) const
+    inline vec4_2x2 Ray2x2::Intersect( const Plane& plane ) const
     {
         // Use following equation to check if ray intersects the plane
         // (ray.Origin + ray.Direction * T - plane.Origin) DOT plane.Normal = 0, T > 0
 
+        vec4_2x2 intersections;
+
         #if RT_ENABLE_INTRINSICS
+        #if RT_ENABLE_AVX
+        __m256 N, D, O, P, T, PLANE, DENOM, TEST, ZEROS, INF, MASK;
+        __m256i MASKi;
 
-        float denominator;
-        __m128 N, D, O, P, T, DENOM, TEST, ZEROS;
+        ZEROS = _mm256_setzero_ps();
+        INF = _mm256_set1_ps( std::numeric_limits<float_t>::infinity() );
 
-        ZEROS = _mm_setzero_ps();
+        // Copy plane normal to lower and upper 128 bits of 256-bit register
+        PLANE = _mm256_load_ps( reinterpret_cast<const float*>(&plane) );
+        P = _mm256_permute2f128_ps( PLANE, PLANE, 0b00000000 );
+        N = _mm256_permute2f128_ps( PLANE, PLANE, 0b00010001 );
 
-        N = _mm_load_ps( &plane.Normal.data );
-        D = _mm_load_ps( &Direction.data );
+        // Process first 2 rays
+        O = _mm256_load_ps( &Origin[ 0 ].data );
+        D = _mm256_load_ps( &Direction[ 0 ].data );
 
-        // Compute denominator first to check if it is close to 0
+        // Compute denominators and prepare execution masks
         DENOM = Dot( N, D );
-        denominator = _mm_cvtss_f32( DENOM );
 
-        // TODO: remove branch
-        if( denominator < -1e-6f || denominator > 1e-6f )
-        {
-            P = _mm_load_ps( &plane.Origin.data );
-            O = _mm_load_ps( &Origin.data );
+        TEST = _mm256_set1_ps( -1e-6f );
+        MASK = _mm256_cmp_ps( DENOM, TEST, _CMP_LT_OQ );
+        TEST = _mm256_set1_ps( 1e-6f );
+        TEST = _mm256_cmp_ps( DENOM, TEST, _CMP_GT_OQ );
+        MASK = _mm256_or_ps( MASK, TEST );
 
-            // Get vector between origins
-            P = _mm_sub_ps( P, O );
+        // Get vector between origins
+        T = _mm256_sub_ps( P, O );
 
-            // Dot with plane's normal and divide by denominator
-            T = Dot( P, N );
-            T = _mm_div_ps( T, DENOM );
+        // Dot with plane's normal and divide by denominator
+        T = Dot( T, N );
+        T = _mm256_div_ps( T, DENOM );
 
-            TEST = _mm_cmpge_ps( T, ZEROS );
-            if( _mm_cvtss_i32( TEST ) )
-            {
-                vec4 intersectionFactor;
-                _mm_store_ps( &intersectionFactor.data, T );
+        TEST = _mm256_cmp_ps( T, ZEROS, _CMP_GE_OQ );
+        MASK = _mm256_and_ps( MASK, TEST );
+        MASKi = _mm256_castps_si256( MASK );
 
-                return intersectionFactor;
-            }
-        }
+        _mm256_maskstore_ps( const_cast<float*>(&intersections.m[ 0 ].data), MASKi, T );
+
+        MASKi = _mm256_cmpeq_epi32( MASKi, _mm256_castps_si256( ZEROS ) );
+        _mm256_maskstore_ps( const_cast<float*>(&intersections.m[ 0 ].data), MASKi, INF );
+
+        // Process second 2 rays
+        O = _mm256_load_ps( &Origin[ 2 ].data );
+        D = _mm256_load_ps( &Direction[ 2 ].data );
+
+        // Compute denominators and prepare execution masks
+        DENOM = Dot( N, D );
+
+        TEST = _mm256_set1_ps( -1e-6f );
+        MASK = _mm256_cmp_ps( DENOM, TEST, _CMP_LT_OQ );
+        TEST = _mm256_set1_ps( 1e-6f );
+        TEST = _mm256_cmp_ps( DENOM, TEST, _CMP_GT_OQ );
+        MASK = _mm256_or_ps( MASK, TEST );
+
+        // Get vector between origins
+        T = _mm256_sub_ps( P, O );
+
+        // Dot with plane's normal and divide by denominator
+        T = Dot( T, N );
+        T = _mm256_div_ps( T, DENOM );
+
+        TEST = _mm256_cmp_ps( T, ZEROS, _CMP_GE_OQ );
+        MASK = _mm256_and_ps( MASK, TEST );
+        MASKi = _mm256_castps_si256( MASK );
+
+        _mm256_maskstore_ps( const_cast<float*>(&intersections.m[ 2 ].data), MASKi, T );
+
+        MASKi = _mm256_cmpeq_epi32( MASKi, _mm256_castps_si256( ZEROS ) );
+        _mm256_maskstore_ps( const_cast<float*>(&intersections.m[ 2 ].data), MASKi, INF );
 
         #else
+        float denominator;
+        __m128 N, D, O, P, T, DENOM, TEST, ZEROS, INF;
 
-        const float denominator = plane.Normal.Dot( Direction );
+        ZEROS = _mm_setzero_ps();
+        INF = _mm_set1_ps( std::numeric_limits<float_t>::infinity() );
 
-        // TODO: remove branch
-        if( denominator < -1e-6f || denominator > 1e-6f )
+        for( int i = 0; i < 4; ++i )
         {
-            const auto P = plane.Origin - Origin;
-            const auto T = P.Dot( plane.Normal ) / denominator;
+            N = _mm_load_ps( &plane.Normal.data );
+            D = _mm_load_ps( &Direction[ i ].data );
 
-            if( T >= 0 )
+            // Compute denominator first to check if it is close to 0
+            DENOM = Dot( N, D );
+            denominator = _mm_cvtss_f32( DENOM );
+
+            // TODO: remove branch
+            if( denominator < -1e-6f || denominator > 1e-6f )
             {
-                return vec4( T );
+                P = _mm_load_ps( &plane.Origin.data );
+                O = _mm_load_ps( &Origin[ i ].data );
+
+                // Get vector between origins
+                P = _mm_sub_ps( P, O );
+
+                // Dot with plane's normal and divide by denominator
+                T = Dot( P, N );
+                T = _mm_div_ps( T, DENOM );
+
+                TEST = _mm_cmplt_ps( T, ZEROS );
+                if( _mm_cvtss_i32( TEST ) )
+                {
+                    T = INF;
+                }
+
+                _mm_store_ps( &intersections.m[ i ].data, T );
             }
         }
+        #endif // AVX
+        #else
+        for( int i = 0; i < 4; ++i )
+        {
+            const float denominator = plane.Normal.Dot( Direction[ i ] );
 
+            // TODO: remove branch
+            if( denominator < -1e-6f || denominator > 1e-6f )
+            {
+                const auto P = plane.Origin - Origin[ i ];
+                auto T = P.Dot( plane.Normal ) / denominator;
+
+                if( T < 0 )
+                {
+                    T = std::numeric_limits<float_t>::infinity();
+                }
+
+                intersections.m[ i ] = vec4( T );
+            }
+        }
         #endif
 
-        // No intersection
-        return vec4( std::numeric_limits<float_t>::infinity() );
+        return intersections;
     }
 
 
-    inline vec4 Ray::Intersect( const Triangle& triangle ) const
+    #if 0
+    inline vec4 Ray2x2::Intersect( const Triangle& triangle ) const
     {
         // Moller-Trumbore intersection algorithm
         //
@@ -231,7 +308,7 @@ namespace RT::OMP
     }
 
 
-    inline bool Ray::Intersect( const Box& box ) const
+    inline bool Ray2x2::Intersect( const Box& box ) const
     {
         #if RT_ENABLE_INTRINSICS
 
@@ -262,7 +339,7 @@ namespace RT::OMP
 
         // Read most significant bit of each component
         return _mm_movemask_ps( TEST ) == 0xF;
-        
+
         #else
 
         float tmin = (box.Min.x - Origin.x) / Direction.x;
@@ -304,7 +381,7 @@ namespace RT::OMP
     }
 
 
-    inline Ray Ray::Reflect( const vec4& normal, const vec4& intersectionPoint ) const
+    inline Ray2x2 Ray2x2::Reflect( const vec4& normal, const vec4& intersectionPoint ) const
     {
         // Use following equation to compute reflection ray
         // (ray.Direction - 2 * (ray.Direction DOT plane.Normal) * plane.Normal
@@ -344,7 +421,7 @@ namespace RT::OMP
     }
 
 
-    inline float Ray::Fresnel( const vec4& normal, float ior ) const
+    inline float Ray2x2::Fresnel( const vec4& normal, float ior ) const
     {
         if( ior == 0 )
         {
@@ -424,4 +501,5 @@ namespace RT::OMP
 
         #endif
     }
+    #endif
 }

@@ -10,6 +10,7 @@ namespace RT
     {
         eUndefined,
         eTest,
+        eBenchmark,
         eOpenMP,
         eCUDA
     };

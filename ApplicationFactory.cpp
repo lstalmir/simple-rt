@@ -2,6 +2,7 @@
 #include "omp/ompApplication.h"
 #include "cuda/cudaApplication.h"
 #include "ApplicationTest.h"
+#include "ApplicationBench.h"
 
 /***************************************************************************************\
 
@@ -19,6 +20,10 @@ std::unique_ptr<RT::Application> RT::ApplicationFactory::CreateApplication( cons
     case ApplicationMode::eTest:
     {
         return std::make_unique<ApplicationTest>( cmdargs );
+    }
+    case ApplicationMode::eBenchmark:
+    {
+        return std::make_unique<ApplicationBench>( cmdargs );
     }
     case ApplicationMode::eOpenMP:
     {

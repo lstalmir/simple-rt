@@ -43,6 +43,8 @@ endif ()
 set (base
     "Application.cpp"
     "Application.h"
+    "ApplicationBench.cpp"
+    "ApplicationBench.h"
     "ApplicationFactory.cpp"
     "ApplicationFactory.h"
     "ApplicationTest.cpp"
@@ -92,6 +94,7 @@ set (omp
     "omp/ompObject.h"
     "omp/ompPlane.h"
     "omp/ompRay.h"
+    "omp/ompRay2.h"
     "omp/ompScene.h"
     "omp/ompTriangle.h"
     )
@@ -100,6 +103,7 @@ set (omptests
     "omp/tests/ompCameraTests.cpp"
     "omp/tests/ompDrawTests.cpp"
     "omp/tests/ompIntersectTests.cpp"
+    "omp/tests/ompIntrinTests.cpp"
     "omp/tests/ompReflectTests.cpp"
     "omp/tests/ompSceneTests.cpp"
     "omp/tests/ompVectorTests.cpp"
